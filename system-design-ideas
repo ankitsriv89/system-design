@@ -1,0 +1,56 @@
+50 System Design Topics – Simple to Complex
+
+Perfect Learning Roadmap for 2026. Save this list.
+
+1. Design a Rate Limiter
+2. Design a URL Shortener
+3. Design Pastebin
+4. Design a Unique ID Generator
+5. Design Consistent Hashing
+6. Design a Load Balancer
+7. Design an API Gateway
+8. Design a Basic Key-Value Store
+9. Design a Caching System (e.g., LRU Cache)
+10. Design a Notification System
+11. Design a Typeahead/Autocomplete System
+12. Design a Web Crawler
+13. Design a Message Queue
+14. Design a 1:1 Chat System
+15. Design a Group Chat System
+16. Design a News Feed System
+17. Design a Proximity Service (e.g., nearby friends)
+18. Design Instagram (photo/video sharing + feed)
+19. Design Twitter/X (timeline + posts)
+20. Design WhatsApp (real-time messaging)
+21. Design Dropbox (file storage & sync)
+22. Design a Ticket Booking System
+23. Design an E-commerce Platform (catalog + checkout)
+24. Design a Recommendation System
+25. Design a Distributed Cache
+26. Design Uber (ride-sharing + matching)
+27. Design Netflix (video streaming platform)
+28. Design YouTube (video upload + streaming)
+29. Design TikTok (short-video platform)
+30. Design Facebook-like Social Network News Feed
+31. Design Google Docs (real-time collaborative editing)
+32. Design a Content Delivery Network (CDN)
+33. Design a Search Engine (indexing + querying)
+34. Design Google Maps (routing + location services)
+35. Design a Distributed Database
+36. Design a Real-time Analytics System
+37. Design an Ad Serving & Tracking System
+38. Design a Fraud Detection System
+39. Design a Stock Trading/Exchange System
+40. Design a Distributed Job Scheduler
+41. Design Event Sourcing + CQRS Architecture
+42. Design a Multi-tenant SaaS Platform
+43. Design Live Video Streaming at Scale
+44. Design a Highly Scalable NoSQL Database
+45. Design a Real-time Multiplayer Game Backend
+46. Design Machine Learning Model Serving Infrastructure
+47. Design a Geo-distributed Low-Latency System
+48. Design a Strongly Consistent Global Database
+49. Design a High-Frequency Trading Platform
+50. Design a Planet-Scale Distributed System (billions of users, multi-region HA)
+
+What will you add to this list

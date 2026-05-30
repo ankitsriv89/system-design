@@ -1,0 +1,65 @@
+{
+  "title": "Rate Limiter — Golden Signals",
+  "uid": "rl-golden",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(ratelimiter_requests_total[1m])) by (allowed)",
+          "legendFormat": "allowed={{allowed}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Check Latency p50/p95/p99 (ms)",
+      "type": "timeseries",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ratelimiter_check_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ratelimiter_check_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ratelimiter_check_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Redis Errors (rate)",
+      "type": "timeseries",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(ratelimiter_redis_errors_total[1m])) by (op)",
+          "legendFormat": "{{op}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Policy Cache Hit Rate",
+      "type": "stat",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "sum(rate(ratelimiter_policy_cache_total{result=\"hit\"}[5m])) / sum(rate(ratelimiter_policy_cache_total[5m]))",
+          "legendFormat": "hit rate"
+        }
+      ],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"}
+    }
+  ]
+}

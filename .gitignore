@@ -1,0 +1,27 @@
+# Go binaries
+*.exe
+*.out
+/projects/*/dist/
+/projects/*/bin/
+
+# Go test cache
+*.test
+
+# Go module download cache (not needed in repo)
+vendor/
+
+# Environment files
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker volumes (local data, not code)
+**/data/
