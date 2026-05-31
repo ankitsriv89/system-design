@@ -1,0 +1,47 @@
+# infra/docker-compose.yml — Shared infrastructure for all projects on this host.
+#
+# This compose file runs once on the Oracle Cloud ARM VM and stays up permanently.
+# All project-level compose files attach to the `infra` network and reach
+# these services by their container hostname (e.g. "postgres").
+#
+# One-time start (from the repo root):
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# To create a new project database:
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE DATABASE myproject;"
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE USER myuser WITH PASSWORD 'mypassword';"
+#   docker exec -it infra-postgres-1 psql -U admin -c "GRANT ALL PRIVILEGES ON DATABASE myproject TO myuser;"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Admin credentials — used only for provisioning project databases.
+      # Each project gets its own dedicated user and database.
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-changeme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Place any *.sql init scripts in infra/initdb/ to run on first start.
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Bind to localhost only — Caddy and project containers reach postgres
+      # via the Docker network; this port is for local psql/debugging only.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - infra
+
+volumes:
+  postgres_data:
+
+networks:
+  # The `infra` network is declared here as the authoritative definition.
+  # All project compose files reference it as `external: true`.
+  infra:
+    name: infra

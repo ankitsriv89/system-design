@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>URL Shortener</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel control">
+        <div>
+          <p class="eyebrow">Project 02</p>
+          <h1>URL Shortener</h1>
+          <p class="subtle">Create a short link, exercise the redirect path, and inspect eventually consistent click analytics.</p>
+        </div>
+
+        <form id="create-form" class="stack">
+          <label>
+            Owner
+            <select id="owner">
+              <option value="demo">demo</option>
+              <option value="marketing">marketing</option>
+              <option value="creator">creator</option>
+            </select>
+          </label>
+          <label>
+            Long URL
+            <input id="long-url" type="url" value="https://example.com/system-design/url-shortener" required />
+          </label>
+          <label>
+            Expires at
+            <input id="expires-at" type="datetime-local" />
+          </label>
+          <button type="submit">Create Short Link</button>
+        </form>
+      </section>
+
+      <section class="panel output">
+        <div class="row">
+          <div>
+            <p class="eyebrow">Latest Link</p>
+            <h2 id="code">No link yet</h2>
+          </div>
+          <button id="copy" type="button" disabled>Copy</button>
+        </div>
+        <a id="short-url" class="short-url" href="#" target="_blank" rel="noreferrer">Create a link to begin</a>
+        <div class="actions">
+          <button id="visit" type="button" disabled>Open Redirect</button>
+          <button id="stats" type="button" disabled>Refresh Stats</button>
+        </div>
+        <pre id="result">{}</pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
