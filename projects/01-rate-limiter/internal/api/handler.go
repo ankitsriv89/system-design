@@ -34,6 +34,14 @@ func (h *Handler) Routes(r *mux.Router) {
 	r.HandleFunc("/healthz", h.Health).Methods(http.MethodGet)
 }
 
+func (h *OdysseyHandler) Routes(r *mux.Router) {
+	r.HandleFunc("/v1/odyssey/state", h.State).Methods(http.MethodGet)
+	r.HandleFunc("/v1/odyssey/question", h.Question).Methods(http.MethodGet)
+	r.HandleFunc("/v1/odyssey/answer", h.Answer).Methods(http.MethodPost)
+	r.HandleFunc("/v1/odyssey/hint", h.Hint).Methods(http.MethodGet)
+	r.HandleFunc("/v1/odyssey/reset", h.Reset).Methods(http.MethodPost)
+}
+
 // CheckRequest is the body for POST /v1/limits/check.
 type CheckRequest struct {
 	Subject  string `json:"subject"`   // e.g. "user:42", "ip:1.2.3.4"
@@ -170,9 +178,13 @@ func (h *Handler) ListPolicies(w http.ResponseWriter, r *http.Request) {
 // Usage returns the recent audit decisions for a subject.
 func (h *Handler) Usage(w http.ResponseWriter, r *http.Request) {
 	subject := mux.Vars(r)["subject"]
-	_ = subject
-	// simplified: return placeholder; real impl queries audit_decisions
-	writeJSON(w, http.StatusOK, map[string]string{"subject": subject, "note": "query audit_decisions table for full history"})
+	decisions, err := h.pStore.RecentDecisions(r.Context(), subject, 30)
+	if err != nil {
+		h.log.Error("usage lookup", zap.String("subject", subject), zap.Error(err))
+		writeErr(w, http.StatusInternalServerError, "failed to load usage")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"subject": subject, "decisions": decisions})
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
@@ -199,4 +211,3 @@ func msToSeconds(ms int64) string {
 	}
 	return fmt.Sprintf("%d", s)
 }
-

@@ -38,6 +38,17 @@ type Policy struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// Decision is one audit decision recorded after a rate-limit check.
+type Decision struct {
+	ID            int64     `json:"id"`
+	Subject       string    `json:"subject"`
+	PolicyID      string    `json:"policy_id"`
+	Allowed       bool      `json:"allowed"`
+	Reason        string    `json:"reason,omitempty"`
+	RetryAfterMs  int64     `json:"retry_after_ms,omitempty"`
+	DecidedAt     time.Time `json:"decided_at"`
+}
+
 // Store persists policies in PostgreSQL.
 type Store struct {
 	db *sql.DB
@@ -133,6 +144,33 @@ func (s *Store) RecordDecision(ctx context.Context, subject, policyID string, al
 		subject, policyID, allowed, reason, retryAfterMs,
 	)
 	return err
+}
+
+func (s *Store) RecentDecisions(ctx context.Context, subject string, limit int) ([]Decision, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 25
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, subject, policy_id, allowed, COALESCE(reason, ''), COALESCE(retry_after_ms, 0), decided_at
+		FROM audit_decisions
+		WHERE subject=$1
+		ORDER BY decided_at DESC
+		LIMIT $2`, subject, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	decisions := make([]Decision, 0, limit)
+	for rows.Next() {
+		var d Decision
+		if err := rows.Scan(&d.ID, &d.Subject, &d.PolicyID, &d.Allowed, &d.Reason, &d.RetryAfterMs, &d.DecidedAt); err != nil {
+			return nil, err
+		}
+		decisions = append(decisions, d)
+	}
+	return decisions, rows.Err()
 }
 
 // Cache is a short-TTL in-process policy cache to avoid DB round-trips on every request.

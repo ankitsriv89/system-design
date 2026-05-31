@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rate Limit Galaxy</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <canvas id="universe" aria-label="DESI cosmic web map with rate-limited ship jumps"></canvas>
+
+      <section class="hud hud-left" aria-label="mission controls">
+        <div class="brand">
+          <span class="status-light" id="healthLight"></span>
+          <div>
+            <h1>Rate Limit Galaxy</h1>
+            <p>DESI cosmic-web jump simulator</p>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Ship callsign</span>
+          <input id="subjectInput" value="ship:andromeda" autocomplete="off">
+        </label>
+
+        <label class="field">
+          <span>Limiter policy</span>
+          <select id="policySelect">
+            <option value="galaxy-token-bucket">galaxy-token-bucket</option>
+            <option value="galaxy-sliding-window">galaxy-sliding-window</option>
+            <option value="user-token-bucket">user-token-bucket</option>
+            <option value="ip-sliding-window">ip-sliding-window</option>
+          </select>
+        </label>
+
+        <div class="actions">
+          <button id="jumpButton" type="button">Random jump</button>
+          <button id="burstButton" type="button">Burst storm</button>
+          <button id="seedButton" type="button">Seed demo policies</button>
+        </div>
+
+        <div class="fuel">
+          <div class="fuel-top">
+            <span>Limiter fuel</span>
+            <strong id="remainingLabel">--</strong>
+          </div>
+          <div class="fuel-track">
+            <span id="fuelFill"></span>
+          </div>
+          <p id="cooldownLabel">Click a galaxy or launch a random jump.</p>
+        </div>
+      </section>
+
+      <section class="hud hud-right" aria-label="telemetry">
+        <div class="panel-title">
+          <span>Current target</span>
+          <strong id="targetName">No lock</strong>
+        </div>
+        <dl class="target-grid">
+          <div>
+            <dt>Tracer</dt>
+            <dd id="targetTracer">--</dd>
+          </div>
+          <div>
+            <dt>Redshift</dt>
+            <dd id="targetRedshift">--</dd>
+          </div>
+          <div>
+            <dt>Rosette</dt>
+            <dd id="targetRosette">--</dd>
+          </div>
+          <div>
+            <dt>Distance proxy</dt>
+            <dd id="targetDistance">--</dd>
+          </div>
+        </dl>
+
+        <div class="oracle">
+          <span>Space oracle</span>
+          <p id="oracleText">Allowed jumps reveal local facts. Denied jumps collapse the wormhole.</p>
+        </div>
+
+        <div class="log-head">
+          <span>Jump log</span>
+          <button id="usageButton" type="button">Sync usage</button>
+        </div>
+        <ol id="eventLog" class="event-log"></ol>
+      </section>
+
+      <section class="legend" aria-label="map legend">
+        <span><i class="dot qso"></i>QSO</span>
+        <span><i class="dot elg"></i>ELG</span>
+        <span><i class="dot lrg"></i>LRG</span>
+        <span><i class="dot bgs"></i>BGS</span>
+      </section>
+    </main>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

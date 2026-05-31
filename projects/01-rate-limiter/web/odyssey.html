@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Interstellar Odyssey — Rate Limiter Demo</title>
+    <link rel="stylesheet" href="/odyssey.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <!-- Three.js renders into this canvas -->
+    <canvas id="c"></canvas>
+
+    <!-- Journey progress strip (top center) -->
+    <nav id="journeyNav" aria-label="journey progress"></nav>
+
+    <!-- Left HUD -->
+    <aside class="hud hud-left" aria-label="mission status">
+      <div class="brand">
+        <span class="status-dot" id="healthDot"></span>
+        <div>
+          <h1>Interstellar Odyssey</h1>
+          <p id="destSubtitle">Connecting…</p>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <dt>Hops remaining</dt>
+          <dd id="hopsRemaining">—</dd>
+        </div>
+        <div class="stat">
+          <dt>Refuels in</dt>
+          <dd id="refillTimer">—</dd>
+        </div>
+        <div class="stat">
+          <dt>Destination</dt>
+          <dd id="destName">—</dd>
+        </div>
+        <div class="stat">
+          <dt>Distance</dt>
+          <dd id="destDistance">—</dd>
+        </div>
+      </div>
+
+      <div class="hop-track" title="hops remaining">
+        <div id="hopBar"></div>
+      </div>
+      <p class="hop-label"><span id="hopsUsed">0</span> / 6 hops used this session</p>
+
+      <div class="actions">
+        <button id="btnQuestion" type="button" disabled>Loading…</button>
+        <button id="btnReset" type="button" class="ghost">Reset journey</button>
+      </div>
+
+      <p id="statusMsg" class="status-msg"></p>
+    </aside>
+
+    <!-- Right HUD: question -->
+    <section class="hud hud-right" id="questionPanel" aria-label="question" hidden>
+      <div class="q-header">
+        <span id="qBadge" class="q-badge"></span>
+        <span id="qDest" class="q-dest"></span>
+      </div>
+      <p id="qText" class="q-text"></p>
+      <ol id="qChoices" class="q-choices"></ol>
+      <div id="qFeedback" class="q-feedback" hidden></div>
+      <div class="q-actions">
+        <button id="btnHint" type="button" class="ghost">Hint <span class="cost">(−1 hop)</span></button>
+        <button id="btnNextQ" type="button" hidden>New question</button>
+      </div>
+    </section>
+
+    <!-- Rate-limited overlay -->
+    <div id="rateLimitOverlay" class="overlay" hidden>
+      <div class="overlay-box denied">
+        <div class="overlay-icon">⛽</div>
+        <h2>Hop Fuel Depleted</h2>
+        <p id="rlMsg">You have used all 6 hops for this session.</p>
+        <p class="overlay-sub">The rate limiter is enforcing your limit. This is exactly how production systems work — per-IP token buckets that refill over time.</p>
+        <p class="refill-label">Refuels in</p>
+        <p id="rlCountdown" class="countdown">—</p>
+        <button id="btnRlClose" type="button" class="ghost">Understood</button>
+      </div>
+    </div>
+
+    <!-- Complete overlay -->
+    <div id="completeOverlay" class="overlay" hidden>
+      <div class="overlay-box complete">
+        <div class="overlay-icon">🌌</div>
+        <h2>Odyssey Complete</h2>
+        <p>You reached <strong>Sagittarius A*</strong> — the supermassive black hole at the centre of the Milky Way, 26,000 light-years from Earth.</p>
+        <p class="overlay-sub">All 6 hops used wisely. The rate limiter tracked your IP and counted every attempt.</p>
+        <button id="btnPlayAgain" type="button">Start again</button>
+      </div>
+    </div>
+
+    <script src="/odyssey-scene.js" type="module"></script>
+    <script src="/odyssey-ui.js" type="module"></script>
+  </body>
+</html>

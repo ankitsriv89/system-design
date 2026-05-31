@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"net/http"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/ankitsriv89/rate-limiter/internal/api"
+	"github.com/ankitsriv89/rate-limiter/internal/odyssey"
 	"github.com/ankitsriv89/rate-limiter/internal/policy"
 	"github.com/ankitsriv89/rate-limiter/internal/store"
 )
@@ -46,14 +48,51 @@ func main() {
 		log.Fatal("migration failed", zap.Error(err))
 	}
 
+	// Session signing key — used to HMAC-sign the session cookie so clients
+	// cannot forge or tamper with it to hijack another player's progress.
+	sessionSecret := env("SESSION_SECRET", "")
+	if len(sessionSecret) < 32 {
+		log.Warn("SESSION_SECRET not set or too short — generating ephemeral key (sessions will not survive restarts)")
+		b := make([]byte, 32)
+		if _, err := rand.Read(b); err != nil {
+			log.Fatal("generate session key", zap.Error(err))
+		}
+		sessionSecret = string(b)
+	}
+	odyssey.SetSessionKey(sessionSecret)
+
+	// Only trust X-Forwarded-For from configured proxy CIDRs.
+	// Without this, any client can spoof their IP to bypass per-IP rate limits.
+	odyssey.ParseTrustedProxies(env("TRUSTED_PROXIES", "127.0.0.1,::1"))
+
+	oStore := odyssey.NewStore(db)
+	if err := oStore.Migrate(ctx); err != nil {
+		log.Fatal("odyssey migration failed", zap.Error(err))
+	}
+	if err := oStore.SeedQuestions(ctx); err != nil {
+		log.Warn("odyssey seed questions", zap.Error(err))
+	}
+
 	cache := policy.NewCache(pStore, 10*time.Second)
 	limiter := store.NewRedisLimiter(rdb)
 	h := api.New(cache, pStore, limiter, log)
 
+	var groqClient *odyssey.GroqClient
+	if key := env("GROQ_API_KEY", ""); key != "" {
+		groqClient = odyssey.NewGroqClient(key)
+		log.Info("Groq AI enabled for question generation")
+	} else {
+		log.Info("GROQ_API_KEY not set — using built-in question bank only")
+	}
+	oh := api.NewOdysseyHandler(oStore, limiter, cache, groqClient, log)
+
 	r := mux.NewRouter()
+	r.Use(corsMiddleware)
 	r.Use(loggingMiddleware(log))
 	h.Routes(r)
+	oh.Routes(r)
 	r.Handle("/metrics", promhttp.Handler())
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("web")))
 
 	srv := &http.Server{
 		Addr:         addr,
@@ -77,6 +116,19 @@ func main() {
 	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutCtx)
+}
+
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func loggingMiddleware(log *zap.Logger) mux.MiddlewareFunc {

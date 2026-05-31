@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -120,7 +121,39 @@ func (r *RedisLimiter) SlidingWindowAllow(ctx context.Context, key string, limit
 	return res[0] == 1, res[1], nil
 }
 
+// PeekTokenBucket returns (remaining, retryAfterMs) without debiting any token.
+// Used by the state endpoint to show current hop count without consuming one.
+func (r *RedisLimiter) PeekTokenBucket(ctx context.Context, key string, capacity float64, refillRate float64) (remaining int64, retryAfterMs int64) {
+	redisKey := fmt.Sprintf("rl:tb:%s", key)
+	vals, err := r.client.HMGet(ctx, redisKey, "tokens", "last_ms").Result()
+	if err != nil || vals[0] == nil {
+		// Key doesn't exist yet — bucket is full
+		return int64(capacity), 0
+	}
+
+	var tokens, lastMs float64
+	fmt.Sscanf(fmt.Sprint(vals[0]), "%f", &tokens)
+	fmt.Sscanf(fmt.Sprint(vals[1]), "%f", &lastMs)
+
+	nowMs := float64(time.Now().UnixMilli())
+	elapsedS := (nowMs - lastMs) / 1000.0
+	tokens = math.Min(capacity, tokens+elapsedS*refillRate)
+
+	if tokens < 1 {
+		needed := 1 - tokens
+		retryAfterMs = int64(math.Ceil((needed / refillRate) * 1000))
+		return 0, retryAfterMs
+	}
+	return int64(tokens), 0
+}
+
 // Ping checks Redis connectivity.
 func (r *RedisLimiter) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
+}
+
+// DeleteKey removes a rate-limit key from Redis (used for demo resets).
+func (r *RedisLimiter) DeleteKey(ctx context.Context, key string) {
+	_ = r.client.Del(ctx, "rl:tb:"+key).Err()
+	_ = r.client.Del(ctx, "rl:sw:"+key).Err()
 }
