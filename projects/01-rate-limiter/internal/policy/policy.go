@@ -174,6 +174,8 @@ func (s *Store) RecentDecisions(ctx context.Context, subject string, limit int) 
 }
 
 // Cache is a short-TTL in-process policy cache to avoid DB round-trips on every request.
+// Policies are read on every /check call; caching is critical for latency.
+// TTL is intentionally short (e.g. 10s) so policy updates propagate quickly after a PUT.
 type Cache struct {
 	mu      sync.RWMutex
 	store   *Store
@@ -194,6 +196,8 @@ func NewCache(store *Store, ttl time.Duration) *Cache {
 	}
 }
 
+// Get returns the cached policy if still fresh, otherwise fetches from the DB.
+// Uses RLock for the hot path and promotes to Lock only on a miss to minimise contention.
 func (c *Cache) Get(ctx context.Context, id string) (*Policy, error) {
 	c.mu.RLock()
 	e, ok := c.entries[id]

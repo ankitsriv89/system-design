@@ -43,9 +43,11 @@ func (h *OdysseyHandler) Routes(r *mux.Router) {
 }
 
 // CheckRequest is the body for POST /v1/limits/check.
+// Subject is a namespaced identifier for the caller (e.g. "user:42", "ip:1.2.3.4").
+// PolicyID selects which rate-limit rule to apply. Both are required.
 type CheckRequest struct {
-	Subject  string `json:"subject"`   // e.g. "user:42", "ip:1.2.3.4"
-	PolicyID string `json:"policy_id"` // which policy applies
+	Subject  string `json:"subject"`
+	PolicyID string `json:"policy_id"`
 }
 
 type CheckResponse struct {
@@ -74,6 +76,8 @@ func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 	}
 
 	start := time.Now()
+	// Key space: "<policy_id>:<subject>" keeps buckets isolated per policy,
+	// so the same subject can have different limits under different policies.
 	key := req.PolicyID + ":" + req.Subject
 
 	var allowed bool
@@ -97,7 +101,8 @@ func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		metrics.RedisErrors.WithLabelValues("check").Inc()
 		h.log.Error("redis check failed", zap.Error(err))
-		// fail-open: allow the request but log the error
+		// Fail-open: a Redis outage should not block all traffic. remaining=-1
+		// signals to callers that the value is unknown rather than zero.
 		allowed = true
 		remaining = -1
 	}
@@ -201,6 +206,8 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
+// msToSeconds converts milliseconds to a whole-second string for the Retry-After header.
+// RFC 7231 requires a positive integer; floor to 1 so clients always wait at least one second.
 func msToSeconds(ms int64) string {
 	if ms <= 0 {
 		return "1"

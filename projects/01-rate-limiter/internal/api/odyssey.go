@@ -147,6 +147,8 @@ func (h *OdysseyHandler) Answer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rate-limit key is prefixed with "ip:" to match the policy's subject_type,
+	// keeping the Redis namespace consistent with /v1/limits/check keys.
 	subject := "ip:" + ip
 	key := odysseyPolicy + ":" + subject
 	allowed, remaining, retryAfterMs, rlErr := h.limiter.TokenBucketAllow(r.Context(), key, p.Capacity, p.RefillRate)
@@ -277,6 +279,9 @@ func (h *OdysseyHandler) Reset(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"reset": true})
 }
 
+// generateAndSave calls Groq to produce a question then persists it so future requests
+// for the same destination are served from the DB instead of calling the LLM again.
+// A DB save failure is non-fatal: the question is still returned to the player.
 func (h *OdysseyHandler) generateAndSave(r *http.Request, dest odyssey.Destination) (*odyssey.Question, error) {
 	q, err := h.groq.GenerateQuestion(r.Context(), dest)
 	if err != nil {
@@ -285,7 +290,6 @@ func (h *OdysseyHandler) generateAndSave(r *http.Request, dest odyssey.Destinati
 	id, err := h.oStore.SaveQuestion(r.Context(), q)
 	if err != nil {
 		h.log.Warn("save groq question", zap.Error(err))
-		// Not fatal — still return the question
 	}
 	q.ID = id
 	return q, nil

@@ -1,3 +1,4 @@
+// Package algorithm provides rate-limiting algorithm implementations.
 package algorithm
 
 import (
@@ -7,12 +8,14 @@ import (
 
 // SlidingWindow implements a sliding window log rate limiter.
 // It tracks individual request timestamps and counts how many fall within [now-window, now].
+// Memory grows with request volume (one entry per allowed request); use RedisLimiter for
+// distributed or high-throughput deployments.
 // Thread-safe for single-node use.
 type SlidingWindow struct {
 	mu       sync.Mutex
 	limit    int
 	window   time.Duration
-	requests []time.Time // sorted ascending
+	requests []time.Time // sorted ascending; evicted lazily on each Allow/Count call
 }
 
 func NewSlidingWindow(limit int, window time.Duration) *SlidingWindow {

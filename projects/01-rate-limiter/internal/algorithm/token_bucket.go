@@ -17,6 +17,8 @@ type TokenBucket struct {
 	lastRefill time.Time
 }
 
+// NewTokenBucket creates a full bucket. capacity is the max token count;
+// refillRate is tokens added per second.
 func NewTokenBucket(capacity float64, refillRate float64) *TokenBucket {
 	return &TokenBucket{
 		capacity:   capacity,
@@ -51,6 +53,8 @@ func (tb *TokenBucket) State() (tokens, capacity float64) {
 	return tb.tokens, tb.capacity
 }
 
+// refill adds tokens proportional to time elapsed since last call.
+// Must be called under tb.mu.
 func (tb *TokenBucket) refill() {
 	now := time.Now()
 	elapsed := now.Sub(tb.lastRefill).Seconds()

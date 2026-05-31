@@ -102,7 +102,8 @@ Rules:
 	}
 
 	content := strings.TrimSpace(gr.Choices[0].Message.Content)
-	// strip markdown fences if model wraps in ```json ... ```
+	// Some models wrap JSON in ```json ... ``` even when instructed not to.
+	// Strip the fences before unmarshalling to avoid a parse error.
 	content = strings.TrimPrefix(content, "```json")
 	content = strings.TrimPrefix(content, "```")
 	content = strings.TrimSuffix(content, "```")

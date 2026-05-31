@@ -40,6 +40,8 @@ func main() {
 	if err != nil {
 		log.Fatal("db open", zap.Error(err))
 	}
+	// Pool limits prevent connection exhaustion under load;
+	// idle limit keeps connections from piling up during quiet periods.
 	db.SetMaxOpenConns(20)
 	db.SetMaxIdleConns(5)
 
@@ -113,6 +115,7 @@ func main() {
 	<-quit
 
 	log.Info("shutting down")
+	// 10-second grace period lets in-flight requests drain before the process exits.
 	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = srv.Shutdown(shutCtx)

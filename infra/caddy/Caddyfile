@@ -1,0 +1,113 @@
+# =============================================================================
+# Caddyfile — System Design Projects reverse proxy
+#
+# Current mode: HTTP only (no domain yet).
+# Each project is accessible at:  http://<VM_IP>:<port>  (direct)
+# OR via this proxy at:            http://<VM_IP>/p01, /p02, ...
+#
+# When you get a domain:
+#   1. Point *.yourdomain.com → VM public IP (DNS A record)
+#   2. Uncomment the HTTPS blocks below
+#   3. Delete the HTTP blocks
+#   4. Run: sudo systemctl reload caddy
+#   Caddy auto-fetches Let's Encrypt certificates — no certbot needed.
+# =============================================================================
+
+# ── Global options ─────────────────────────────────────────────────────────────
+{
+    # Caddy admin API (local only — used by `caddy reload`)
+    admin localhost:2019
+
+    # Uncomment when switching to HTTPS with a real domain:
+    # email anksr2018@gmail.com
+}
+
+# =============================================================================
+# HTTP mode — IP-based routing with path prefixes
+# Access projects at: http://<VM_IP>/p01/  http://<VM_IP>/p02/  etc.
+# =============================================================================
+
+:80 {
+    # ── Health check for Caddy itself ─────────────────────────────────────────
+    handle /caddy-health {
+        respond "ok" 200
+    }
+
+    # ── Project 01 — Rate Limiter (:8080) ─────────────────────────────────────
+    handle_path /p01/* {
+        reverse_proxy localhost:8080
+    }
+
+    # ── Project 02 — URL Shortener (:8081) ────────────────────────────────────
+    handle_path /p02/* {
+        reverse_proxy localhost:8081
+    }
+
+    # ── Project 03 — Pastebin (:8082) ─────────────────────────────────────────
+    handle_path /p03/* {
+        reverse_proxy localhost:8082
+    }
+
+    # ── Project 04 — Unique ID Generator (:8083) ──────────────────────────────
+    handle_path /p04/* {
+        reverse_proxy localhost:8083
+    }
+
+    # ── Project 05 — Consistent Hashing (:8084) ───────────────────────────────
+    handle_path /p05/* {
+        reverse_proxy localhost:8084
+    }
+
+    # Add further projects here as they are built.
+    # Template:
+    #   handle_path /pNN/* {
+    #       reverse_proxy localhost:80NN
+    #   }
+
+    # ── Default: index of running projects ────────────────────────────────────
+    handle {
+        respond `
+<!doctype html><html><head><title>System Design Projects</title>
+<style>body{font-family:monospace;max-width:600px;margin:40px auto;padding:0 20px}
+a{display:block;margin:8px 0;color:#0af}</style></head><body>
+<h2>System Design — Running Projects</h2>
+<a href="/p01/">[01] Rate Limiter</a>
+<a href="/p02/">[02] URL Shortener</a>
+<p style="color:#888;margin-top:40px">More projects deploy as they are built.</p>
+</body></html>` 200
+    }
+}
+
+# =============================================================================
+# HTTPS mode — uncomment when you have a domain
+# Replace "yourdomain.com" with your actual domain.
+# Delete the :80 block above when switching to this.
+# =============================================================================
+
+# p01.yourdomain.com {
+#     reverse_proxy localhost:8080
+# }
+#
+# p02.yourdomain.com {
+#     reverse_proxy localhost:8081
+# }
+#
+# p03.yourdomain.com {
+#     reverse_proxy localhost:8082
+# }
+#
+# grafana.yourdomain.com {
+#     reverse_proxy localhost:3001
+# }
+#
+# prometheus.yourdomain.com {
+#     reverse_proxy localhost:9091
+#     # Restrict to your IP only — prometheus has no auth by default
+#     @allowed remote_ip YOUR.IP.HERE
+#     handle @allowed {
+#         reverse_proxy localhost:9091
+#     }
+#     handle {
+#         respond "Forbidden" 403
+#     }
+# }

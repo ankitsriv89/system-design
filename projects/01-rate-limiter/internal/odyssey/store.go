@@ -98,7 +98,9 @@ func (s *Store) SaveQuestion(ctx context.Context, q *Question) (int64, error) {
 	return id, err
 }
 
-// GetProgress loads a player's progress row; returns zero-value State if new player.
+// GetProgress loads a player's progress row; returns a zero-value State for new players
+// so callers can treat first-time visitors the same as returning ones.
+// The "ip" column stores the session ID (not the raw IP) — the name is a historical artifact.
 func (s *Store) GetProgress(ctx context.Context, ip string) (*State, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT ip, destination_idx, hops_used, completed, last_activity
@@ -148,13 +150,15 @@ func (s *Store) CountQuestions(ctx context.Context, destinationID string) (int, 
 }
 
 // SeedQuestions inserts the built-in question bank if the table is empty.
+// Idempotent: a non-zero row count means a previous seed (or user-added questions)
+// already exists, so we skip to avoid duplicates on every container restart.
 func (s *Store) SeedQuestions(ctx context.Context) error {
 	var total int
 	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM odyssey_questions`).Scan(&total); err != nil {
 		return err
 	}
 	if total > 0 {
-		return nil // already seeded
+		return nil
 	}
 
 	questions := builtinQuestions()
