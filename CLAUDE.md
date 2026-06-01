@@ -137,7 +137,7 @@ For a performance/optimisation-only change, use: `perf(<project-slug>): <short d
 | Project | Port |
 |---|---|
 | 01-rate-limiter | 8081 |
-| 02-url-shortener | 8082 (tentative) |
+| 02-url-shortener | 8085 |
 | 03-pastebin | 8082 |
 | 04-unique-id-generator | 8083 |
 | 05-consistent-hashing | 8084 |

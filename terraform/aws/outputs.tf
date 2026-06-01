@@ -54,7 +54,7 @@ output "access" {
     prometheus_url = "http://${aws_eip.main.public_ip}:9090"
     services = {
       "01-rate-limiter"  = "http://${aws_eip.main.public_ip}:8081"
-      "02-url-shortener" = "http://${aws_eip.main.public_ip}:8082"
+      "02-url-shortener" = "http://${aws_eip.main.public_ip}:8085"
       "03-pastebin"      = "http://${aws_eip.main.public_ip}:8082"
       "04-unique-id-gen" = "http://${aws_eip.main.public_ip}:8083"
     }
