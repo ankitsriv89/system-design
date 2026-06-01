@@ -69,13 +69,6 @@ data "oci_core_images" "ubuntu_arm" {
   shape                    = "VM.Standard.A1.Flex"
   sort_by                  = "TIMECREATED"
   sort_order               = "DESC"
-
-  # Only minimal (non-GPU) images
-  filter {
-    name   = "display_name"
-    values = [".*Minimal.*"]
-    regex  = true
-  }
 }
 
 # =============================================================================
