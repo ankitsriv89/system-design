@@ -1,0 +1,90 @@
+{
+  "title": "Pastebin — Golden Signals",
+  "uid": "pb-golden",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum(rate(pastebin_http_requests_total[1m])) by (method, path)",
+        "legendFormat": "{{method}} {{path}}"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Error Rate (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "100 * sum(rate(pastebin_http_requests_total{status=~\"5..\"}[1m])) / sum(rate(pastebin_http_requests_total[1m]))",
+        "legendFormat": "error %"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "p50 / p95 / p99 Latency",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(pastebin_http_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum(rate(pastebin_http_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum(rate(pastebin_http_duration_seconds_bucket[1m])) by (le))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Cache Hit Rate (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "100 * rate(pastebin_cache_hits_total{result=\"hit\"}[1m]) / rate(pastebin_cache_hits_total[1m])",
+        "legendFormat": "cache hit %"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "Pastes Created / Deleted",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(pastebin_pastes_created_total[1m])", "legendFormat": "created/s" },
+        { "expr": "rate(pastebin_pastes_deleted_total[1m])", "legendFormat": "deleted/s" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Rate Limit Rejections",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "rate(pastebin_rate_limit_rejections_total[1m])",
+        "legendFormat": "rejections/s"
+      }]
+    },
+    {
+      "id": 7,
+      "title": "Paste Size Distribution",
+      "type": "histogram",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum(rate(pastebin_paste_size_bytes_bucket[5m])) by (le)",
+        "legendFormat": "{{le}}"
+      }]
+    },
+    {
+      "id": 8,
+      "title": "Expiry Sweep — Removed / Duration",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(pastebin_expired_pastes_removed_total[5m])", "legendFormat": "removed/s" },
+        { "expr": "histogram_quantile(0.95, rate(pastebin_expiry_sweep_duration_seconds_bucket[5m]))", "legendFormat": "sweep p95 latency" }
+      ]
+    }
+  ]
+}
