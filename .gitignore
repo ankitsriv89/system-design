@@ -25,6 +25,8 @@ Thumbs.db
 
 # Docker volumes (local data, not code)
 **/data/
+# Exception: static web assets bundled into Docker images
+!**/web/data/
 
 # Terraform scratch directories
 terraform-temp/

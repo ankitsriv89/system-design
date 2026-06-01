@@ -95,6 +95,13 @@ run_migration "03-pastebin"           "paste"    "pastebin"
 run_migration "04-unique-id-generator" "uniqueid" "uniqueid"
 
 # ── 6. Deploy each project ────────────────────────────────────────────────────
+# Fetch public IP via IMDSv2 for BASE_URL injection into url-shortener.
+IMDS_TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: ${IMDS_TOKEN}" \
+  http://169.254.169.254/latest/meta-data/public-ipv4)
+echo "=== Public IP for BASE_URL: ${PUBLIC_IP} ==="
+
 PROJECTS=(
   "01-rate-limiter"
   "02-url-shortener"
@@ -107,6 +114,11 @@ for project in "${PROJECTS[@]}"; do
   if [ -f "$dir/docker-compose.yml" ]; then
     echo "=== Deploying $project ==="
     sudo -u ubuntu docker compose -f "$dir/docker-compose.yml" build --pull -q
+    if [ "$project" = "02-url-shortener" ]; then
+      # Write .env so docker compose picks up the real public IP for short URLs.
+      echo "BASE_URL=http://${PUBLIC_IP}:8085" > "$dir/.env"
+      chown ubuntu:ubuntu "$dir/.env"
+    fi
     sudo -u ubuntu docker compose -f "$dir/docker-compose.yml" up -d --remove-orphans
     echo "=== $project deployed ==="
   else
