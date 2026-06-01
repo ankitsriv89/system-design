@@ -26,6 +26,9 @@ Thumbs.db
 # Docker volumes (local data, not code)
 **/data/
 
+# Terraform scratch directories
+terraform-temp/
+
 # Terraform — never commit state or real credentials
 terraform/.terraform/
 terraform/.terraform.lock.hcl
