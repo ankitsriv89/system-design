@@ -126,7 +126,19 @@ for project in "${PROJECTS[@]}"; do
   fi
 done
 
-# ── 7. Write status file ──────────────────────────────────────────────────────
+# ── 7. Seed rate-limiter policies ────────────────────────────────────────────
+echo "=== Waiting for rate-limiter to become healthy... ==="
+for i in $(seq 1 20); do
+  if curl -sf http://localhost:8081/healthz >/dev/null 2>&1; then
+    echo "=== Rate-limiter ready after ${i}s ==="
+    BASE_URL=http://localhost:8081 bash "$REPO_DIR/projects/01-rate-limiter/scripts/seed.sh" 2>&1 || true
+    echo "=== Policies seeded ==="
+    break
+  fi
+  sleep 2
+done
+
+# ── 8. Write status file ──────────────────────────────────────────────────────
 STATUS_FILE="/home/ubuntu/deployment-status.txt"
 cat > "$STATUS_FILE" <<EOF
 === System Design — AWS Spot Deployment Status ===

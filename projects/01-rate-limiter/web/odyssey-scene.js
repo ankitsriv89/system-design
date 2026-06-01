@@ -9,7 +9,6 @@
  */
 
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ── Destination background images (local WebP, served by Go) ──────────────
 const BG_IMAGES = [
@@ -148,36 +147,9 @@ let shipLoadedResolve;
 new Promise(r => { shipLoadedResolve = r; });
 
 function loadShip() {
-  const loader = new GLTFLoader();
-  // Voyager spacecraft GLB from NASA's official Sketchfab collection (CC0)
-  const SHIP_URL = 'https://cdn.jsdelivr.net/gh/ankitsriv89/system-design@main/projects/01-rate-limiter/web/assets/voyager.glb';
-
-  // Fallback: procedural ship if GLB unavailable
-  const fallback = () => {
-    ship = buildProceduralShip();
-    scene.add(ship);
-    shipLoadedResolve();
-  };
-
-  loader.load(
-    SHIP_URL,
-    (gltf) => {
-      ship = gltf.scene;
-      ship.scale.setScalar(0.6);
-      ship.rotation.y = Math.PI;
-      scene.add(ship);
-      shipLoadedResolve();
-    },
-    undefined,
-    () => fallback()
-  );
-
-  // Also start with procedural ship immediately so scene isn't empty while GLB loads
-  setTimeout(() => {
-    if (!scene.getObjectByName('ship_loaded')) {
-      fallback();
-    }
-  }, 3000);
+  ship = buildProceduralShip();
+  scene.add(ship);
+  shipLoadedResolve();
 }
 
 function buildProceduralShip() {
