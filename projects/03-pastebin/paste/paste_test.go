@@ -3,6 +3,7 @@ package paste_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,16 +13,21 @@ import (
 // --- in-memory fakes ---
 
 type fakeRepo struct {
+	mu   sync.Mutex
 	data map[string]*paste.Paste
 }
 
 func newFakeRepo() *fakeRepo { return &fakeRepo{data: map[string]*paste.Paste{}} }
 
 func (r *fakeRepo) Save(_ context.Context, p *paste.Paste) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	r.data[p.ID] = p
 	return nil
 }
 func (r *fakeRepo) Get(_ context.Context, id string) (*paste.Paste, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	p, ok := r.data[id]
 	if !ok {
 		return nil, paste.ErrNotFound
@@ -29,6 +35,8 @@ func (r *fakeRepo) Get(_ context.Context, id string) (*paste.Paste, error) {
 	return p, nil
 }
 func (r *fakeRepo) Delete(_ context.Context, id string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if _, ok := r.data[id]; !ok {
 		return paste.ErrNotFound
 	}
@@ -36,6 +44,8 @@ func (r *fakeRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 func (r *fakeRepo) ListExpired(_ context.Context, limit int) ([]string, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	var ids []string
 	for id, p := range r.data {
 		if p.ExpiresAt != nil && time.Now().After(*p.ExpiresAt) {
@@ -46,6 +56,13 @@ func (r *fakeRepo) ListExpired(_ context.Context, limit int) ([]string, error) {
 		}
 	}
 	return ids, nil
+}
+
+func (r *fakeRepo) has(id string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.data[id]
+	return ok
 }
 
 type fakeBlobs struct {
@@ -221,7 +238,7 @@ func TestGet_BurnAfterRead(t *testing.T) {
 
 	// Give the async delete goroutine a moment to run.
 	time.Sleep(50 * time.Millisecond)
-	if _, ok := repo.data[p.ID]; ok {
+	if repo.has(p.ID) {
 		t.Error("burn-after-read paste should be deleted after first read")
 	}
 }

@@ -13,5 +13,6 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates tzdata wget
 WORKDIR /app
 COPY --from=builder /app/uniqueid .
+COPY web/ web/
 EXPOSE 8083
 ENTRYPOINT ["./uniqueid"]

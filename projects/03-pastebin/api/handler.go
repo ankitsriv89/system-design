@@ -46,13 +46,12 @@ func New(svc pasteService, rl rateLimiter, log *zap.Logger) *Handler {
 	return &Handler{svc: svc, rl: rl, log: log}
 }
 
-var indexBody = []byte(`{"service":"pastebin","version":"0.1.0","endpoints":[{"method":"POST","path":"/v1/pastes"},{"method":"GET","path":"/v1/pastes/{id}"},{"method":"GET","path":"/v1/pastes/{id}/raw"},{"method":"DELETE","path":"/v1/pastes/{id}"}]}`)
-
 // Register wires all routes onto the router.
 func (h *Handler) Register(r *mux.Router) {
 	r.Handle("/metrics", metrics.Handler()).Methods(http.MethodGet)
 	r.HandleFunc("/healthz", h.healthz).Methods(http.MethodGet)
 	r.HandleFunc("/", h.index).Methods(http.MethodGet)
+	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("web"))))
 
 	v1 := r.PathPrefix("/v1").Subrouter()
 	v1.HandleFunc("/pastes", h.createPaste).Methods(http.MethodPost)
@@ -63,9 +62,8 @@ func (h *Handler) Register(r *mux.Router) {
 
 // --- handlers ---
 
-func (h *Handler) index(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(indexBody)
+func (h *Handler) index(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "web/index.html")
 }
 
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pastebin</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel control">
+        <div>
+          <p class="eyebrow">Project 03</p>
+          <h1>Pastebin</h1>
+          <p class="subtle">Create a paste, retrieve it by ID, or fetch the raw content. Pastes can have a TTL and burn-after-read.</p>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" role="tab" data-tab="create">Create</button>
+          <button class="tab" role="tab" data-tab="fetch">Fetch</button>
+        </div>
+
+        <form id="create-form" class="tab-panel stack" data-panel="create">
+          <label>
+            Title (optional)
+            <input id="title" type="text" placeholder="My paste" />
+          </label>
+          <label>
+            Language
+            <select id="language">
+              <option value="">plain text</option>
+              <option value="go">Go</option>
+              <option value="python">Python</option>
+              <option value="javascript">JavaScript</option>
+              <option value="typescript">TypeScript</option>
+              <option value="bash">Bash</option>
+              <option value="sql">SQL</option>
+              <option value="json">JSON</option>
+              <option value="yaml">YAML</option>
+              <option value="markdown">Markdown</option>
+            </select>
+          </label>
+          <label>
+            Visibility
+            <select id="visibility">
+              <option value="public">Public</option>
+              <option value="unlisted">Unlisted</option>
+            </select>
+          </label>
+          <label>
+            TTL seconds (blank = no expiry)
+            <input id="ttl" type="number" min="1" placeholder="3600" />
+          </label>
+          <label class="checkbox-label">
+            <input id="burn" type="checkbox" />
+            Burn after read
+          </label>
+          <label>
+            Content
+            <textarea id="content" rows="10" placeholder="Paste your content here…" required></textarea>
+          </label>
+          <button type="submit">Create Paste</button>
+        </form>
+
+        <div id="fetch-panel" class="tab-panel stack hidden" data-panel="fetch">
+          <label>
+            Paste ID
+            <input id="fetch-id" type="text" placeholder="abc123" />
+          </label>
+          <div class="btn-row">
+            <button id="fetch-btn" type="button">Fetch</button>
+            <button id="raw-btn" type="button" class="secondary">Raw</button>
+            <button id="delete-btn" type="button" class="danger">Delete</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel output">
+        <div class="row">
+          <div>
+            <p class="eyebrow">Result</p>
+            <h2 id="paste-id-display">No paste yet</h2>
+          </div>
+          <button id="copy-id" type="button" disabled>Copy ID</button>
+        </div>
+        <div id="meta" class="meta hidden"></div>
+        <pre id="result">{}</pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unique ID Generator</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="panel control">
+        <div>
+          <p class="eyebrow">Project 04</p>
+          <h1>Unique ID Generator</h1>
+          <p class="subtle">Generate Snowflake IDs, batch-generate up to 1000 at once, or decompose any ID into its timestamp, worker, and sequence fields.</p>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button class="tab active" role="tab" data-tab="single">Single</button>
+          <button class="tab" role="tab" data-tab="batch">Batch</button>
+          <button class="tab" role="tab" data-tab="inspect">Inspect</button>
+          <button class="tab" role="tab" data-tab="worker">Worker</button>
+        </div>
+
+        <!-- Single -->
+        <div class="tab-panel" data-panel="single">
+          <button id="next-btn" type="button" class="full-width">Generate ID</button>
+        </div>
+
+        <!-- Batch -->
+        <div class="tab-panel hidden stack" data-panel="batch">
+          <label>
+            Count (1 – 1000)
+            <input id="batch-count" type="number" min="1" max="1000" value="10" />
+          </label>
+          <button id="batch-btn" type="button">Generate Batch</button>
+        </div>
+
+        <!-- Inspect -->
+        <div class="tab-panel hidden stack" data-panel="inspect">
+          <label>
+            Snowflake ID
+            <input id="inspect-id" type="text" placeholder="7966449586176" />
+          </label>
+          <button id="inspect-btn" type="button">Decompose</button>
+        </div>
+
+        <!-- Worker health -->
+        <div class="tab-panel hidden" data-panel="worker">
+          <button id="worker-btn" type="button" class="full-width">Get Worker Health</button>
+        </div>
+      </section>
+
+      <section class="panel output">
+        <div class="row">
+          <div>
+            <p class="eyebrow">Result</p>
+            <h2 id="latest-id">No ID yet</h2>
+          </div>
+          <button id="copy-id" type="button" disabled>Copy ID</button>
+        </div>
+        <div id="chips" class="chips"></div>
+        <pre id="result">{}</pre>
+      </section>
+    </main>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
