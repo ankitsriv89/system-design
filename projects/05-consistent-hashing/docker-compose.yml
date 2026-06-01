@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  consistent-hashing:
+    build: .
+    image: consistent-hashing:latest
+    ports:
+      - "8084:8084"
+    environment:
+      ADDR: ":8084"
+    restart: unless-stopped
+    networks:
+      - infra
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "5184:80"
+    restart: unless-stopped
+    networks:
+      - infra
+
+networks:
+  infra:
+    external: true
+    name: infra
