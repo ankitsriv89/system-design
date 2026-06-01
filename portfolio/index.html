@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050810;
+    --bg2: #090d1a;
+    --bg3: #0d1424;
+    --panel: #0b1120;
+    --border: #1a2540;
+    --border-bright: #243560;
+    --cyan: #00d4ff;
+    --cyan-dim: #0090b3;
+    --green: #00ff9d;
+    --green-dim: #00a362;
+    --amber: #ffb700;
+    --amber-dim: #8a6200;
+    --red: #ff3860;
+    --text: #c8d8f0;
+    --text-dim: #4a6080;
+    --text-bright: #e8f0ff;
+    --phase1: #00d4ff;
+    --phase2: #7c3aed;
+    --phase3: #059669;
+    --phase4: #d97706;
+    --phase5: #dc2626;
+    --live-glow: 0 0 20px rgba(0,255,157,0.3), 0 0 40px rgba(0,255,157,0.1);
+    --tile-glow: 0 0 30px rgba(0,212,255,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Scanline overlay ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  /* ─── Ambient grid ─── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    position: relative;
+    z-index: 10;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,12,30,0.98) 0%, rgba(5,8,16,0.95) 100%);
+    padding: 0 2rem;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.2rem 0 0;
+    gap: 1rem;
+  }
+
+  .logo-cluster {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .logo-icon svg { width: 100%; height: 100%; }
+
+  .site-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-bright);
+    line-height: 1;
+  }
+
+  .site-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--cyan-dim);
+    letter-spacing: 0.08em;
+    margin-top: 0.2rem;
+    opacity: 0.85;
+  }
+
+  .header-stats {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .stat {
+    text-align: right;
+  }
+
+  .stat-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    color: var(--cyan);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 0.15rem;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--green);
+    letter-spacing: 0.08em;
+  }
+
+  .pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  /* ─── Filter bar ─── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    flex-wrap: wrap;
+    border-top: 1px solid rgba(26,37,64,0.6);
+    margin-top: 1rem;
+  }
+
+  .filter-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-right: 0.5rem;
+  }
+
+  .filter-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+
+  .filter-btn:hover {
+    border-color: var(--cyan-dim);
+    color: var(--cyan);
+    background: rgba(0,212,255,0.06);
+  }
+
+  .filter-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 12px rgba(0,212,255,0.2);
+  }
+
+  .filter-btn[data-phase="1"].active { border-color: var(--phase1); color: var(--phase1); background: rgba(0,212,255,0.08); box-shadow: 0 0 12px rgba(0,212,255,0.2); }
+  .filter-btn[data-phase="2"].active { border-color: var(--phase2); color: var(--phase2); background: rgba(124,58,237,0.08); box-shadow: 0 0 12px rgba(124,58,237,0.2); }
+  .filter-btn[data-phase="3"].active { border-color: var(--phase3); color: var(--phase3); background: rgba(5,150,105,0.08); box-shadow: 0 0 12px rgba(5,150,105,0.2); }
+  .filter-btn[data-phase="4"].active { border-color: var(--phase4); color: var(--phase4); background: rgba(217,119,6,0.08); box-shadow: 0 0 12px rgba(217,119,6,0.2); }
+  .filter-btn[data-phase="5"].active { border-color: var(--phase5); color: var(--phase5); background: rgba(220,38,38,0.08); box-shadow: 0 0 12px rgba(220,38,38,0.2); }
+
+  .filter-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 0.25rem;
+  }
+
+  /* ─── Main content ─── */
+  .main {
+    position: relative;
+    z-index: 10;
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 2rem 2rem 4rem;
+  }
+
+  /* ─── Section heading ─── */
+  .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    margin-top: 1rem;
+  }
+
+  .section-heading-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border-bright), transparent);
+  }
+
+  .section-heading-text {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  /* ─── Grid ─── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1px;
+    background: var(--border);
+  }
+
+  /* ─── Tile ─── */
+  .tile {
+    position: relative;
+    background: var(--panel);
+    padding: 1.4rem 1.4rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    transition: all 0.25s ease;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  .tile::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(ellipse at 30% 30%, rgba(0,212,255,0.05) 0%, transparent 70%);
+  }
+
+  .tile:hover::before { opacity: 1; }
+
+  .tile.live {
+    cursor: pointer;
+  }
+
+  .tile.live:hover {
+    background: #0c1525;
+    transform: translateY(-2px);
+    box-shadow: var(--tile-glow), 0 4px 20px rgba(0,0,0,0.5);
+    z-index: 2;
+  }
+
+  .tile.live:hover .tile-border-accent {
+    opacity: 1;
+  }
+
+  .tile-border-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .tile[data-phase="1"] .tile-border-accent { background: linear-gradient(90deg, transparent, var(--phase1), transparent); }
+  .tile[data-phase="2"] .tile-border-accent { background: linear-gradient(90deg, transparent, var(--phase2), transparent); }
+  .tile[data-phase="3"] .tile-border-accent { background: linear-gradient(90deg, transparent, var(--phase3), transparent); }
+  .tile[data-phase="4"] .tile-border-accent { background: linear-gradient(90deg, transparent, var(--phase4), transparent); }
+  .tile[data-phase="5"] .tile-border-accent { background: linear-gradient(90deg, transparent, var(--phase5), transparent); }
+
+  .tile.live .tile-border-accent { opacity: 0.6; }
+
+  /* Tile header row */
+  .tile-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .tile-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    padding: 0.2rem 0.45rem;
+    border: 1px solid;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+
+  .tile.live .tile-num {
+    border-color: var(--green-dim);
+    color: var(--green);
+    background: rgba(0,255,157,0.06);
+    text-shadow: 0 0 8px rgba(0,255,157,0.5);
+  }
+
+  .tile.soon .tile-num {
+    border-color: var(--border);
+    color: var(--text-dim);
+    background: transparent;
+    opacity: 0.5;
+  }
+
+  .tile-phase-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid;
+    opacity: 0.7;
+  }
+
+  .tile[data-phase="1"] .tile-phase-badge { border-color: var(--phase1); color: var(--phase1); }
+  .tile[data-phase="2"] .tile-phase-badge { border-color: var(--phase2); color: var(--phase2); }
+  .tile[data-phase="3"] .tile-phase-badge { border-color: var(--phase3); color: var(--phase3); }
+  .tile[data-phase="4"] .tile-phase-badge { border-color: var(--phase4); color: var(--phase4); }
+  .tile[data-phase="5"] .tile-phase-badge { border-color: var(--phase5); color: var(--phase5); }
+
+  .tile.soon .tile-phase-badge { opacity: 0.3; }
+
+  /* Tile name */
+  .tile-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    color: var(--text-bright);
+    line-height: 1.2;
+  }
+
+  .tile.soon .tile-name {
+    color: var(--text-dim);
+    opacity: 0.6;
+  }
+
+  /* Tile description */
+  .tile-desc {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 400;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .tile.live .tile-desc {
+    color: rgba(200,216,240,0.65);
+  }
+
+  /* Tech tags */
+  .tile-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .tile.live .tag {
+    border-color: rgba(0,212,255,0.2);
+    color: rgba(0,212,255,0.6);
+    background: rgba(0,212,255,0.04);
+  }
+
+  .tile.soon .tag {
+    opacity: 0.3;
+  }
+
+  /* Tile footer */
+  .tile-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.2rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .tile-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .tile.live .tile-status {
+    color: var(--green);
+  }
+
+  .tile.soon .tile-status {
+    color: var(--text-dim);
+    opacity: 0.4;
+  }
+
+  .status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .tile.live .status-dot {
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  .tile.soon .status-dot {
+    background: var(--text-dim);
+  }
+
+  /* Launch button */
+  .launch-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.9rem;
+    border: 1px solid;
+    background: transparent;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: all 0.2s ease;
+    clip-path: polygon(5px 0%, 100% 0%, calc(100% - 5px) 100%, 0% 100%);
+  }
+
+  .tile.live .launch-btn {
+    border-color: var(--cyan-dim);
+    color: var(--cyan);
+  }
+
+  .tile.live .launch-btn:hover {
+    background: rgba(0,212,255,0.12);
+    border-color: var(--cyan);
+    box-shadow: 0 0 14px rgba(0,212,255,0.3);
+  }
+
+  .tile.soon .launch-btn {
+    border-color: var(--border);
+    color: var(--text-dim);
+    opacity: 0.25;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Hidden tile */
+  .tile.hidden {
+    display: none;
+  }
+
+  /* ─── Tooltip ─── */
+  .tooltip-msg {
+    position: fixed;
+    background: var(--bg3);
+    border: 1px solid var(--border-bright);
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    padding: 0.5rem 0.85rem;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    white-space: nowrap;
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+
+  .tooltip-msg.visible {
+    opacity: 1;
+  }
+
+  /* ─── Phase section headers ─── */
+  .phase-header {
+    grid-column: 1 / -1;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0.9rem 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* ─── Footer ─── */
+  .footer {
+    position: relative;
+    z-index: 10;
+    border-top: 1px solid var(--border);
+    background: var(--bg2);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .footer-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+  }
+
+  .footer-link {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.2s ease;
+  }
+
+  .footer-link:hover { color: var(--cyan); }
+
+  .footer-link svg { width: 12px; height: 12px; opacity: 0.7; }
+
+  .footer-right {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    text-align: right;
+  }
+
+  /* ─── Animations ─── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tile {
+    animation: fadeInUp 0.4s ease both;
+  }
+
+  /* stagger first 12 tiles */
+  .tile:nth-child(1)  { animation-delay: 0.03s; }
+  .tile:nth-child(2)  { animation-delay: 0.06s; }
+  .tile:nth-child(3)  { animation-delay: 0.09s; }
+  .tile:nth-child(4)  { animation-delay: 0.12s; }
+  .tile:nth-child(5)  { animation-delay: 0.15s; }
+  .tile:nth-child(6)  { animation-delay: 0.18s; }
+  .tile:nth-child(7)  { animation-delay: 0.21s; }
+  .tile:nth-child(8)  { animation-delay: 0.24s; }
+  .tile:nth-child(9)  { animation-delay: 0.27s; }
+  .tile:nth-child(10) { animation-delay: 0.30s; }
+  .tile:nth-child(11) { animation-delay: 0.33s; }
+  .tile:nth-child(12) { animation-delay: 0.36s; }
+
+  /* ─── Live count ticker ─── */
+  .live-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* ─── Corner decoration ─── */
+  .corner-deco {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--border-bright);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .corner-deco.tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .corner-deco.br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 640px) {
+    .header-stats { display: none; }
+    .header { padding: 0 1rem; }
+    .main { padding: 1.5rem 0 3rem; }
+    .filter-bar { padding: 0.8rem 1rem; }
+    .footer { padding: 1.2rem 1rem; flex-direction: column; }
+    .footer-right { text-align: left; }
+  }
+
+  /* ─── No-results ─── */
+  .no-results {
+    grid-column: 1 / -1;
+    padding: 4rem 2rem;
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    display: none;
+  }
+
+  /* ─── Progress bar ─── */
+  .progress-bar-wrap {
+    height: 2px;
+    background: var(--border);
+    margin-top: 0.3rem;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green), var(--cyan));
+    width: 8%; /* 4/50 */
+    box-shadow: 0 0 8px var(--cyan);
+    transition: width 1s ease;
+  }
+</style>
+</head>
+<body>
+
+<!-- ─────────────────── HEADER ─────────────────── -->
+<header class="header">
+  <div class="header-top">
+    <div class="logo-cluster">
+      <div class="logo-icon">
+        <svg viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="21" cy="21" r="20" stroke="#1a2540" stroke-width="1"/>
+          <circle cx="21" cy="21" r="14" stroke="#243560" stroke-width="0.5"/>
+          <!-- nodes -->
+          <circle cx="21" cy="7" r="2.5" fill="#00d4ff" opacity="0.9"/>
+          <circle cx="33" cy="14" r="2" fill="#00d4ff" opacity="0.6"/>
+          <circle cx="33" cy="28" r="2" fill="#00ff9d" opacity="0.6"/>
+          <circle cx="21" cy="35" r="2.5" fill="#00ff9d" opacity="0.9"/>
+          <circle cx="9" cy="28" r="2" fill="#00d4ff" opacity="0.6"/>
+          <circle cx="9" cy="14" r="2" fill="#00d4ff" opacity="0.6"/>
+          <!-- center -->
+          <circle cx="21" cy="21" r="3" fill="#00d4ff" opacity="0.8"/>
+          <!-- edges -->
+          <line x1="21" y1="9.5" x2="21" y2="18" stroke="#00d4ff" stroke-width="0.5" opacity="0.4"/>
+          <line x1="31.2" y1="15.8" x2="23.5" y2="19.5" stroke="#00d4ff" stroke-width="0.5" opacity="0.4"/>
+          <line x1="31.2" y1="26.2" x2="23.5" y2="22.5" stroke="#00ff9d" stroke-width="0.5" opacity="0.4"/>
+          <line x1="21" y1="32.5" x2="21" y2="24" stroke="#00ff9d" stroke-width="0.5" opacity="0.4"/>
+          <line x1="10.8" y1="26.2" x2="18.5" y2="22.5" stroke="#00d4ff" stroke-width="0.5" opacity="0.4"/>
+          <line x1="10.8" y1="15.8" x2="18.5" y2="19.5" stroke="#00d4ff" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+      </div>
+      <div>
+        <div class="site-title">System Design Portfolio</div>
+        <div class="site-subtitle">50 distributed systems · single Oracle Cloud ARM instance</div>
+        <div class="progress-bar-wrap" style="margin-top:0.4rem;width:240px;">
+          <div class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-stats">
+      <div class="stat">
+        <div class="stat-value" id="live-count">04</div>
+        <div class="stat-label">Live</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" style="color:var(--text-dim)">46</div>
+        <div class="stat-label">Building</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">50</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="status-indicator">
+        <span class="pulse-dot"></span>
+        <span>ONLINE</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">Filter</span>
+    <button class="filter-btn active" data-phase="all">All</button>
+    <div class="filter-divider"></div>
+    <button class="filter-btn" data-phase="1">Phase 1 · Core</button>
+    <button class="filter-btn" data-phase="2">Phase 2 · Real-Time</button>
+    <button class="filter-btn" data-phase="3">Phase 3 · Infra</button>
+    <button class="filter-btn" data-phase="4">Phase 4 · Advanced</button>
+    <button class="filter-btn" data-phase="5">Phase 5 · Global</button>
+  </div>
+</header>
+
+<!-- ─────────────────── MAIN ─────────────────── -->
+<main class="main">
+  <div class="grid" id="grid">
+    <!-- tiles injected by JS -->
+    <div class="no-results" id="no-results">// NO MATCHING PROJECTS</div>
+  </div>
+</main>
+
+<!-- ─────────────────── FOOTER ─────────────────── -->
+<footer class="footer">
+  <div class="footer-left">
+    <div class="footer-title">System Design Portfolio</div>
+    <div class="footer-links">
+      <a class="footer-link" href="https://github.com/ankitsriv89/system-design" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub Repo
+      </a>
+      <a class="footer-link" href="http://YOUR_HOST:3001" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="1"/><path d="M4 10l2-3 2 2 2-4 2 2"/></svg>
+        Grafana Monitoring
+      </a>
+    </div>
+  </div>
+  <div class="footer-right">
+    Oracle Cloud · ARM64 Ampere A1<br>
+    4 OCPUs · 24 GB RAM · $0/mo
+  </div>
+</footer>
+
+<!-- Tooltip -->
+<div class="tooltip-msg" id="tooltip">Not deployed yet</div>
+
+<script>
+const HOST = 'http://YOUR_HOST';
+
+const PROJECTS = [
+  // Phase 1
+  { id:'01', name:'Rate Limiter',             phase:1, desc:'Token bucket / sliding window rate limiting with Redis.',                     stack:['Go','Redis','PostgreSQL'],               live:true  },
+  { id:'02', name:'URL Shortener',            phase:1, desc:'Hash-based short URL generation with analytics.',                            stack:['Go','PostgreSQL','Redis'],               live:true  },
+  { id:'03', name:'Pastebin',                 phase:1, desc:'Paste storage with TTL, object store, and syntax metadata.',                 stack:['Go','PostgreSQL','MinIO','Redis'],        live:true  },
+  { id:'04', name:'Unique ID Generator',      phase:1, desc:'Snowflake IDs with worker leasing and batch generation.',                   stack:['Go','PostgreSQL'],                       live:true  },
+  { id:'05', name:'Consistent Hashing',       phase:1, desc:'Virtual-node ring with visualizer.',                                        stack:['Go','CLI'],                              live:false },
+  { id:'06', name:'Load Balancer',            phase:1, desc:'HTTP reverse proxy with multiple algorithms.',                               stack:['Go','Docker'],                           live:false },
+  { id:'07', name:'API Gateway',              phase:1, desc:'Auth, routing, rate limiting at the edge.',                                 stack:['Go','Redis','PostgreSQL'],               live:false },
+  { id:'08', name:'Key-Value Store',          phase:1, desc:'Write-ahead log and SSTable storage engine.',                               stack:['Go','WAL'],                              live:false },
+  { id:'09', name:'Caching System',           phase:1, desc:'Redis-compatible protocol subset implementation.',                          stack:['Go'],                                    live:false },
+  { id:'10', name:'Notification System',      phase:1, desc:'Multi-channel fan-out with Kafka.',                                        stack:['Java','Spring Boot','Kafka'],            live:false },
+  { id:'11', name:'Typeahead Autocomplete',   phase:1, desc:'Trie + Redis prefix search.',                                              stack:['Go','Redis','PostgreSQL'],               live:false },
+  { id:'12', name:'Web Crawler',              phase:1, desc:'Distributed crawl with dedup and frontier queue.',                         stack:['Go','Kafka','PostgreSQL'],               live:false },
+  { id:'13', name:'Message Queue',            phase:1, desc:'Durable queue with consumer groups.',                                      stack:['Go','PostgreSQL'],                       live:false },
+  // Phase 2
+  { id:'14', name:'1:1 Chat System',          phase:2, desc:'WebSocket messaging with delivery receipts.',                              stack:['Java','WebSockets','Kafka'],             live:false },
+  { id:'15', name:'Group Chat System',        phase:2, desc:'Fan-out to group members with read tracking.',                            stack:['Java','Kafka'],                          live:false },
+  { id:'16', name:'News Feed System',         phase:2, desc:'Push/pull hybrid feed generation.',                                       stack:['Java','Kafka','Redis'],                  live:false },
+  { id:'17', name:'Proximity Service',        phase:2, desc:'Geohash-based nearby search.',                                            stack:['Java','Redis GEO'],                      live:false },
+  { id:'18', name:'Instagram Clone',          phase:2, desc:'Photo/video upload, feed, and CDN.',                                      stack:['Java','S3','Kafka'],                     live:false },
+  { id:'19', name:'Twitter/X Clone',          phase:2, desc:'Timeline fanout, trending, search.',                                     stack:['Java','Kafka','OpenSearch'],             live:false },
+  { id:'20', name:'WhatsApp Clone',           phase:2, desc:'Encrypted real-time messaging at scale.',                                stack:['Java','Netty','Kafka'],                  live:false },
+  { id:'21', name:'Dropbox Clone',            phase:2, desc:'File sync with delta uploads.',                                          stack:['Java','S3','Kafka'],                     live:false },
+  { id:'22', name:'Ticket Booking',           phase:2, desc:'Distributed seat locking and payment flow.',                             stack:['Java','PostgreSQL','Redis'],             live:false },
+  { id:'23', name:'E-commerce Platform',      phase:2, desc:'Product catalog, cart, orders, payments.',                              stack:['Java','Kafka','OpenSearch'],             live:false },
+  { id:'24', name:'Recommendation System',    phase:2, desc:'Collaborative filtering with feature store.',                           stack:['Python','FastAPI','Kafka'],              live:false },
+  // Phase 3
+  { id:'25', name:'Distributed Cache',        phase:3, desc:'Consistent hashing, replication, gossip.',                              stack:['Go','Redis protocol'],                   live:false },
+  { id:'26', name:'Uber Clone',               phase:3, desc:'Real-time ride matching with geospatial index.',                        stack:['Java','WebSockets'],                     live:false },
+  { id:'27', name:'Netflix Clone',            phase:3, desc:'Adaptive bitrate streaming with CDN simulation.',                      stack:['Java'],                                  live:false },
+  { id:'28', name:'YouTube Clone',            phase:3, desc:'Video transcoding pipeline and feed.',                                 stack:['Java','Kafka','S3'],                     live:false },
+  { id:'29', name:'TikTok Clone',             phase:3, desc:'Short video ranking and delivery.',                                   stack:['Java','Redis'],                          live:false },
+  { id:'30', name:'Facebook Clone',           phase:3, desc:'Social graph, news feed, notifications.',                            stack:['Java','Kafka'],                          live:false },
+  { id:'31', name:'Google Docs Clone',        phase:3, desc:'CRDT-based real-time collaborative editing.',                        stack:['Java','WebSockets'],                     live:false },
+  { id:'32', name:'CDN',                      phase:3, desc:'Edge caching, origin pull, invalidation.',                           stack:['Go'],                                    live:false },
+  { id:'33', name:'Search Engine',            phase:3, desc:'Inverted index, ranking, crawl integration.',                        stack:['Go','OpenSearch'],                       live:false },
+  { id:'34', name:'Google Maps Clone',        phase:3, desc:'Routing, ETA, geospatial index.',                                   stack:['Java','PostGIS'],                        live:false },
+  { id:'35', name:'Distributed Database',     phase:3, desc:'Raft consensus, replication, sharding.',                            stack:['Go','Raft'],                             live:false },
+  // Phase 4
+  { id:'36', name:'Real-Time Analytics',      phase:4, desc:'Stream processing and dashboards.',                                  stack:['Python','Kafka'],                        live:false },
+  { id:'37', name:'Ad Serving',               phase:4, desc:'Low-latency targeting and click tracking.',                         stack:['Go','Redis'],                            live:false },
+  { id:'38', name:'Fraud Detection',          phase:4, desc:'ML scoring on transaction streams.',                                stack:['Python','Kafka'],                        live:false },
+  { id:'39', name:'Stock Exchange',           phase:4, desc:'Order matching engine with WebSocket feed.',                        stack:['Go','WebSockets'],                       live:false },
+  { id:'40', name:'Job Scheduler',            phase:4, desc:'Distributed cron with leader election.',                           stack:['Go','PostgreSQL'],                       live:false },
+  { id:'41', name:'Event Sourcing & CQRS',    phase:4, desc:'Event store, projections, sagas.',                                 stack:['Java','Kafka'],                          live:false },
+  { id:'42', name:'Multi-Tenant SaaS',        phase:4, desc:'Tenant isolation, billing, and provisioning.',                     stack:['Java'],                                  live:false },
+  { id:'43', name:'Live Video Streaming',     phase:4, desc:'Ingest, transcode, and HLS delivery at scale.',                   stack:['Java','WebSockets'],                     live:false },
+  { id:'44', name:'Scalable NoSQL DB',        phase:4, desc:'LSM-tree storage engine with replication.',                       stack:['Go'],                                    live:false },
+  { id:'45', name:'Multiplayer Game Backend', phase:4, desc:'Low-latency state sync with WebSockets.',                         stack:['Go','WebSockets'],                       live:false },
+  { id:'46', name:'ML Model Serving',         phase:4, desc:'Inference API with batching and A/B routing.',                    stack:['Python','FastAPI'],                      live:false },
+  // Phase 5
+  { id:'47', name:'Geo-Distributed System',   phase:5, desc:'Multi-region active-active with conflict resolution.',            stack:['Go'],                                    live:false },
+  { id:'48', name:'Strongly Consistent DB',   phase:5, desc:'Spanner-style consensus across regions.',                        stack:['Go','Raft'],                             live:false },
+  { id:'49', name:'High-Frequency Trading',   phase:5, desc:'Sub-millisecond matching with LMAX Disruptor pattern.',          stack:['Go'],                                    live:false },
+  { id:'50', name:'Planet-Scale System',      phase:5, desc:'Global partitioning, replication, and coordination.',            stack:['Go'],                                    live:false },
+];
+
+const PHASE_LABELS = {
+  1: 'Core Building Blocks',
+  2: 'Real-Time & Product Systems',
+  3: 'Distributed Infrastructure',
+  4: 'Advanced Data & Platform',
+  5: 'Global Scale',
+};
+
+const PHASE_COLORS = {
+  1: 'var(--phase1)',
+  2: 'var(--phase2)',
+  3: 'var(--phase3)',
+  4: 'var(--phase4)',
+  5: 'var(--phase5)',
+};
+
+function buildGrid(filterPhase) {
+  const grid = document.getElementById('grid');
+  const noResults = document.getElementById('no-results');
+  grid.innerHTML = '';
+  grid.appendChild(noResults);
+
+  const filtered = filterPhase === 'all'
+    ? PROJECTS
+    : PROJECTS.filter(p => p.phase === parseInt(filterPhase));
+
+  if (filtered.length === 0) {
+    noResults.style.display = 'block';
+    return;
+  }
+  noResults.style.display = 'none';
+
+  let lastPhase = null;
+
+  filtered.forEach((p, i) => {
+    if (filterPhase === 'all' && p.phase !== lastPhase) {
+      // Phase section divider row
+      const div = document.createElement('div');
+      div.className = 'phase-header';
+      div.style.cssText = `
+        grid-column: 1 / -1;
+        background: var(--bg2);
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+      `;
+      div.innerHTML = `
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.55rem;letter-spacing:0.2em;text-transform:uppercase;color:${PHASE_COLORS[p.phase]};opacity:0.9">Phase ${p.phase}</span>
+        <span style="font-family:'Rajdhani',sans-serif;font-weight:600;font-size:0.85rem;letter-spacing:0.06em;color:var(--text-dim)">${PHASE_LABELS[p.phase]}</span>
+        <span style="flex:1;height:1px;background:var(--border);opacity:0.5;margin-left:0.5rem;"></span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:0.6rem;color:var(--text-dim);opacity:0.4">${PROJECTS.filter(x=>x.phase===p.phase).length} projects</span>
+      `;
+      grid.appendChild(div);
+      lastPhase = p.phase;
+    }
+
+    const tile = document.createElement('div');
+    tile.className = `tile ${p.live ? 'live' : 'soon'}`;
+    tile.dataset.phase = p.phase;
+
+    const launchHref = p.live
+      ? `${HOST}/p${p.id}/`
+      : '#';
+
+    tile.innerHTML = `
+      <div class="tile-border-accent"></div>
+      <div class="corner-deco tl"></div>
+      <div class="corner-deco br"></div>
+      <div class="tile-header">
+        <span class="tile-num">${p.id}</span>
+        <span class="tile-phase-badge">P${p.phase}</span>
+      </div>
+      <div class="tile-name">${p.name}</div>
+      <div class="tile-desc">${p.desc}</div>
+      <div class="tile-tags">
+        ${p.stack.map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+      <div class="tile-footer">
+        <span class="tile-status">
+          <span class="status-dot"></span>
+          ${p.live ? 'Live' : 'Coming soon'}
+        </span>
+        ${p.live
+          ? `<a class="launch-btn" href="${launchHref}" target="_blank" rel="noopener">Launch →</a>`
+          : `<button class="launch-btn" tabindex="-1" data-soon>Launch →</button>`
+        }
+      </div>
+    `;
+
+    // Show tooltip on soon clicks
+    if (!p.live) {
+      tile.addEventListener('click', (e) => {
+        const tooltip = document.getElementById('tooltip');
+        tooltip.style.left = (e.clientX + 14) + 'px';
+        tooltip.style.top  = (e.clientY + 14) + 'px';
+        tooltip.classList.add('visible');
+        clearTimeout(tile._tt);
+        tile._tt = setTimeout(() => tooltip.classList.remove('visible'), 1600);
+      });
+    }
+
+    grid.appendChild(tile);
+  });
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildGrid(btn.dataset.phase);
+  });
+});
+
+// Tooltip follow cursor (optional — keeps it near click)
+document.addEventListener('mousemove', (e) => {
+  const t = document.getElementById('tooltip');
+  if (t.classList.contains('visible')) {
+    t.style.left = (e.clientX + 14) + 'px';
+    t.style.top  = (e.clientY + 14) + 'px';
+  }
+});
+
+// Initial render
+buildGrid('all');
+</script>
+</body>
+</html>
