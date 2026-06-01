@@ -1,0 +1,46 @@
+# docker-compose.yml — unique-id-generator project stack
+#
+# Prerequisites: shared infra must be running first.
+#   docker compose -f ../../infra/docker-compose.yml up -d
+#
+# One-time database setup:
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE DATABASE uniqueid;"
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE USER uniqueid WITH PASSWORD 'uniqueid';"
+#   docker exec -it infra-postgres-1 psql -U admin -c "GRANT ALL PRIVILEGES ON DATABASE uniqueid TO uniqueid;"
+#
+# Run migrations:
+#   docker compose run --rm server sh -c "wget -qO- http://localhost:8083/healthz || true"
+#   cat scripts/migrate.sql | docker exec -i infra-postgres-1 psql -U uniqueid -d uniqueid
+#
+# Start:
+#   docker compose up -d
+#
+# Port assignments (non-conflicting with other projects):
+#   8083 — HTTP API
+#   5435 — PostgreSQL (proxied from infra, for local psql access)
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      LISTEN_ADDR: ":8083"
+      DATABASE_URL: "postgres://uniqueid:uniqueid@postgres:5432/uniqueid?sslmode=disable"
+      REGION: "local"
+    networks:
+      - default
+      - infra
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default: {}
+  infra:
+    external: true
