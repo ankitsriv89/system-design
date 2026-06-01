@@ -28,6 +28,48 @@ html, body {
   line-height: 1.5;
 }
 
+/* ── Version nav ────────────────────────────────────────── */
+.version-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(2, 3, 12, 0.85);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.75rem;
+}
+
+.version-nav-label {
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 6px;
+}
+
+.version-nav-link {
+  padding: 2px 10px;
+  border-radius: 4px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s, background 0.15s;
+}
+
+.version-nav-link:hover {
+  color: var(--ink);
+  background: rgba(150, 200, 255, 0.08);
+}
+
+.version-nav-link.active {
+  color: var(--cyan);
+  background: rgba(97, 243, 255, 0.1);
+}
+
 /* ── Three.js canvas ────────────────────────────────────── */
 #c {
   position: fixed;
@@ -40,7 +82,7 @@ html, body {
 /* ── Journey nav strip ──────────────────────────────────── */
 #journeyNav {
   position: fixed;
-  top: 14px;
+  top: 46px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
