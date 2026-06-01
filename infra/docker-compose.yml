@@ -71,22 +71,9 @@ services:
     networks:
       - infra
 
-  # Exports host-level metrics: CPU, memory, disk, network, uptime.
-  # Runs in host PID/network namespace so it can see the real system counters.
-  node-exporter:
-    image: prom/node-exporter:v1.9.1
-    restart: unless-stopped
-    pid: host
-    network_mode: host
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - "--path.rootfs=/rootfs"
-      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+  # node-exporter runs as a native systemd service (prometheus-node-exporter
+  # package) on port 9100. No Docker container needed — the systemd service
+  # is already present on the host after cloud-init installs the package.
 
 volumes:
   postgres_data:
