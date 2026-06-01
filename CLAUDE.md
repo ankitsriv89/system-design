@@ -73,6 +73,7 @@ Every project follows this layout:
 │   └── handler.go
 ├── store/            — storage adapters: DB, cache, object store
 ├── metrics/          — Prometheus metric registrations
+├── web/              — frontend: index.html, styles.css, app.js (required for all projects)
 ├── scripts/          — migrate.sql, seed.sh, integration_test.sh, load_test.sh
 ├── docs/             — architecture.md, code-flow.md, build-log.md, changelog.md
 ├── Dockerfile
@@ -125,9 +126,11 @@ After `go build ./...`, `go vet ./...`, and `go test -race ./...` all pass, prod
 After all docs are written:
 1. `git add` only project files — never `.env`, `*.secret`, or binaries.
 2. Commit message: `feat(<project-slug>): initial implementation + docs`
+   - For changes spanning multiple projects: `feat(03-pastebin, 04-unique-id-generator): <short description>`
 3. `git push origin main`
 
 For a performance/optimisation-only change, use: `perf(<project-slug>): <short description>`
+For a bug fix: `fix(<project-slug>): <short description>`
 
 ---
 
@@ -141,7 +144,7 @@ For a performance/optimisation-only change, use: `perf(<project-slug>): <short d
 | 03-pastebin | 8082 |
 | 04-unique-id-generator | 8083 |
 | 05-consistent-hashing | 8084 |
-| 06 onwards | 8085, 8086 … |
+| 06 onwards | 8086, 8087 … |
 
 ### Naming
 - Module path: `github.com/ankitsriv89/<project-slug>`
@@ -152,6 +155,21 @@ For a performance/optimisation-only change, use: `perf(<project-slug>): <short d
 - PostgreSQL, Redis, Prometheus, Grafana, MinIO live in `infra/docker-compose.yml`.
 - Every project connects via the external Docker network named `infra`.
 - Never bundle a redundant Postgres or Redis in a project's own `docker-compose.yml` unless the project specifically requires isolation.
+- Each project's Postgres user/database is provisioned via `infra/initdb/<NN>_<project>.sql` (runs on first PG start). Schema migrations are applied explicitly in `cloud-init.sh` via `docker exec -i infra-postgres-1 psql`.
+- Projects that need a dynamic public URL (e.g. BASE_URL) must use `${VAR:-default}` in docker-compose and have `cloud-init.sh` write a `.env` file using IMDSv2 before `docker compose up`. Never hardcode IPs.
+- IMDSv2 is enforced (`http_tokens = required`). All IMDS calls need the two-step token fetch (`PUT /latest/api/token` then use header `X-aws-ec2-metadata-token`).
+
+### Frontend (web/)
+Every project must have an interactive web UI served at `GET /`. Rules:
+
+- `web/index.html` — the page, loaded by `http.ServeFile(w, r, "web/index.html")` at `GET /`.
+- `web/styles.css` and `web/app.js` — loaded via `GET /static/*`; wired with `r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("web"))))`.
+- The UI must exercise every meaningful API endpoint with real fetch calls — not just display documentation.
+- Use vanilla JS and plain CSS — no build tools, no bundlers, no frameworks.
+- Never use `innerHTML` with API-returned data — use `textContent` or DOM methods (`createElement`, `replaceChildren`) to prevent XSS.
+- The Dockerfile final stage must `COPY web/ web/` so the assets are present in the container at `/app/web/`.
+- Static web assets committed under `web/data/` are excluded by `.gitignore`'s `**/data/` rule — add an `!**/web/data/` exception if needed.
+- Reference design: project 02 (`url-shortener/web/`) — two-column layout, left control panel, right dark-background output `<pre>`.
 
 ### Source file comments
 - Every `.go` file must have a `// Package <name> ...` comment.
