@@ -224,12 +224,16 @@ resource "oci_core_instance" "vm" {
 # ── Reserve a static public IP ────────────────────────────────────────────────
 # Attaches a reserved public IP to the instance's primary VNIC so the IP
 # stays the same across instance stops/starts.
+#
+# Chain: instance → vnic_attachments → private_ips (filtered by vnic_id) → id
+# oci_core_vnic does not export private_ip_id in provider 8.x; the correct
+# approach is oci_core_private_ips filtered by vnic_id.
 data "oci_core_vnic_attachments" "vm" {
   compartment_id = var.compartment_ocid
   instance_id    = oci_core_instance.vm.id
 }
 
-data "oci_core_vnic" "vm_primary" {
+data "oci_core_private_ips" "vm_primary" {
   vnic_id = data.oci_core_vnic_attachments.vm.vnic_attachments[0].vnic_id
 }
 
@@ -237,7 +241,7 @@ resource "oci_core_public_ip" "static" {
   compartment_id = var.compartment_ocid
   lifetime       = "RESERVED"
   display_name   = "system-design-public-ip"
-  private_ip_id  = data.oci_core_vnic.vm_primary.private_ip_id
+  private_ip_id  = data.oci_core_private_ips.vm_primary.private_ips[0].id
 
   # Don't destroy the IP even if the instance is recreated — DNS continuity
   lifecycle {
