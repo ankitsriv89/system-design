@@ -70,3 +70,37 @@ ok      github.com/ankitsriv89/uniqueid/generator    0.020s
 - `-ldflags="-s -w"` — strips debug symbols and DWARF info to reduce binary size.
 - `go 1.23.0` in `go.mod` — minimum version required; actual toolchain is 1.24.2.
 - No `go.sum` checked in from scratch — `go mod tidy` generated it from the module graph.
+
+---
+
+## v0.2.0 build — 2026-06-01 (memory/performance optimisations)
+
+```
+$ go build ./...
+(no output — clean build)
+
+$ go vet ./...
+(no output — no issues)
+
+$ go test ./... -v -count=1
+?       github.com/ankitsriv89/uniqueid         [no test files]
+?       github.com/ankitsriv89/uniqueid/api     [no test files]
+=== RUN   TestUniqueSequential
+--- PASS: TestUniqueSequential (0.00s)
+=== RUN   TestUniqueConcurrent
+--- PASS: TestUniqueConcurrent (0.01s)
+=== RUN   TestDecompose
+--- PASS: TestDecompose (0.00s)
+=== RUN   TestClockRollback
+--- PASS: TestClockRollback (0.01s)
+=== RUN   TestBatch
+--- PASS: TestBatch (0.00s)
+=== RUN   TestWorkerIDValidation
+--- PASS: TestWorkerIDValidation (0.00s)
+PASS
+ok      github.com/ankitsriv89/uniqueid/generator    0.021s
+?       github.com/ankitsriv89/uniqueid/lease        [no test files]
+?       github.com/ankitsriv89/uniqueid/metrics      [no test files]
+```
+
+**6/6 tests passed. 0 failures.**

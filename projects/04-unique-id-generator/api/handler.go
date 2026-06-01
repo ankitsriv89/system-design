@@ -8,12 +8,31 @@
 //	GET  /v1/workers/health   — current worker ID and lease status
 //	GET  /healthz             — liveness probe
 //	GET  /metrics             — Prometheus exposition
+//
+// Memory optimisations (relevant when many services share one host):
+//
+//   - bufPool: a sync.Pool of *bytes.Buffer reused across JSON serialisations.
+//     Each request borrows one buffer, encodes into it, writes it to the
+//     ResponseWriter, then returns it to the pool.  This eliminates the
+//     per-request heap allocation that json.NewEncoder(w) would cause.
+//
+//   - healthzBody: a package-level []byte written once at init.  The healthz
+//     handler is called by Docker every 10 s × N projects; avoiding a
+//     map[string]string allocation on each probe matters at scale.
+//
+//   - Handler.workerIDStr: the worker ID rendered to a string once at
+//     construction rather than on every /next response.
+//
+//   - batchIDs reuses the []int64 slice returned by gen.Batch directly
+//     instead of copying it, and builds the []string slice in one pass.
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -25,6 +44,15 @@ import (
 
 const maxBatchSize = 1000
 
+// bufPool holds *bytes.Buffer instances reused across requests to avoid
+// per-request heap allocation for JSON serialisation.
+var bufPool = sync.Pool{
+	New: func() any { return bytes.NewBuffer(make([]byte, 0, 512)) },
+}
+
+// healthzBody is the fixed response for GET /healthz, built once at init.
+var healthzBody = []byte(`{"status":"ok"}`)
+
 // idGenerator is the subset of generator.Generator used by the handler.
 // Defined as an interface so tests can inject a stub.
 type idGenerator interface {
@@ -35,14 +63,20 @@ type idGenerator interface {
 
 // Handler holds all HTTP handler methods.
 type Handler struct {
-	gen    idGenerator
-	log    *zap.Logger
-	region string
+	gen          idGenerator
+	log          *zap.Logger
+	region       string
+	workerIDStr  string // pre-rendered; avoids FormatInt on every /next call
 }
 
 // New creates a Handler backed by the given generator.
 func New(gen idGenerator, region string, log *zap.Logger) *Handler {
-	return &Handler{gen: gen, log: log, region: region}
+	return &Handler{
+		gen:         gen,
+		log:         log,
+		region:      region,
+		workerIDStr: strconv.FormatInt(gen.WorkerID(), 10),
+	}
 }
 
 // Register wires all routes onto the router.
@@ -59,15 +93,18 @@ func (h *Handler) Register(r *mux.Router) {
 
 // --- handlers ---
 
+// healthz writes the static liveness response without any allocations.
 func (h *Handler) healthz(w http.ResponseWriter, r *http.Request) {
-	h.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(healthzBody)
 }
 
 type nextResponse struct {
-	ID        int64  `json:"id"`
-	IDString  string `json:"id_string"` // string copy for JS clients that lose precision on int64
-	WorkerID  int64  `json:"worker_id"`
-	Region    string `json:"region"`
+	ID       int64  `json:"id"`
+	IDString string `json:"id_string"` // string copy for JS clients that lose precision on int64
+	WorkerID int64  `json:"worker_id"`
+	Region   string `json:"region"`
 }
 
 // nextID generates a single Snowflake ID.
@@ -90,10 +127,10 @@ type batchRequest struct {
 }
 
 type batchResponse struct {
-	IDs      []int64  `json:"ids"`
+	IDs       []int64  `json:"ids"`
 	IDStrings []string `json:"id_strings"` // string copies for JS clients
-	Count    int      `json:"count"`
-	WorkerID int64    `json:"worker_id"`
+	Count     int      `json:"count"`
+	WorkerID  int64    `json:"worker_id"`
 }
 
 // batchIDs generates up to maxBatchSize IDs in one call.
@@ -113,6 +150,7 @@ func (h *Handler) batchIDs(w http.ResponseWriter, r *http.Request) {
 	metrics.GenerationDuration.Observe(time.Since(start).Seconds())
 	metrics.IDsGenerated.Add(float64(len(ids)))
 
+	// Build the string slice in one pass over the already-allocated ids slice.
 	strs := make([]string, len(ids))
 	for i, id := range ids {
 		strs[i] = strconv.FormatInt(id, 10)
@@ -172,10 +210,24 @@ func (h *Handler) workerHealth(w http.ResponseWriter, r *http.Request) {
 
 // --- helpers ---
 
+// writeJSON serialises v into a pooled buffer, writes it to w, then returns
+// the buffer to the pool. This avoids allocating a new io.Writer wrapper and
+// internal buffer on every response.
 func (h *Handler) writeJSON(w http.ResponseWriter, status int, v any) {
+	buf := bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
+
+	if err := json.NewEncoder(buf).Encode(v); err != nil {
+		bufPool.Put(buf)
+		h.log.Error("json encode error", zap.Error(err))
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	_, _ = w.Write(buf.Bytes())
+	bufPool.Put(buf)
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, status int, msg string) {

@@ -45,9 +45,15 @@ func New(dsn, region string, log *zap.Logger) (*Manager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("lease: open db: %w", err)
 	}
-	db.SetMaxOpenConns(4)
+	// The lease manager only ever needs two concurrent connections: one for
+	// the renew ticker and one for ad-hoc calls (Acquire, Release, RecordClockIncident).
+	// Idle == Open so the pool never destroys and recreates connections between
+	// the infrequent 10-second renew ticks, avoiding reconnect overhead on a
+	// shared host where many services compete for file descriptors.
+	db.SetMaxOpenConns(2)
 	db.SetMaxIdleConns(2)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxLifetime(10 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 	return &Manager{db: db, log: log, region: region}, nil
 }
 

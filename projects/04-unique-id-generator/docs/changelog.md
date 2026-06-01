@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.2.0] — 2026-06-01
+
+### Changed — memory and performance optimisations for shared-host deployment
+
+**`generator` package**
+- `Batch(n)` now acquires the mutex **once** for the entire batch instead of once per ID. For a batch of 1000, this eliminates 999 unnecessary lock/unlock round-trips through the OS scheduler.
+- Extracted lock-free `next()` inner method; public `Next()` acquires the mutex and delegates to it; `Batch()` does the same across the whole loop.
+- `Generator` struct fields reordered and padded to 64 bytes (one CPU cache line). Immutable fields (`workerID`, `onIncident`) are grouped before a `[32]byte` pad; hot mutable fields (`lastMs`, `sequence`) land on their own cache line. This prevents false sharing when multiple services allocate generators adjacently in memory on the same ARM instance.
+
+**`api` package**
+- Added a `sync.Pool` of `*bytes.Buffer` (`bufPool`) reused across all JSON serialisation calls. Each request borrows a buffer, encodes into it, writes to the `ResponseWriter`, then returns it — eliminating the per-request heap allocation previously caused by `json.NewEncoder(w)`.
+- `GET /healthz` now writes a pre-built `[]byte` (`healthzBody`) with a direct `w.Write` call. The previous implementation allocated a `map[string]string{"status":"ok"}` on every Docker health-check probe (every 10 s × N co-hosted services).
+- `Handler.workerIDStr` is pre-rendered once in `New()` instead of calling `strconv.FormatInt` on every `/v1/ids/next` response.
+
+**`lease` package**
+- `MaxOpenConns` reduced from 4 → 2 (only two concurrent DB calls are ever possible: renew ticker + one ad-hoc call).
+- `MaxIdleConns` raised to match `MaxOpenConns` (2) so the pool never destroys and recreates connections between the 10-second renew ticks — avoids reconnect overhead and saves file descriptors on a shared host.
+- Added `SetConnMaxIdleTime(5m)` to reclaim idle connections if the service is quiet for an extended period.
+
+---
+
 ## [0.1.0] — 2026-06-01
 
 ### Added

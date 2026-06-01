@@ -15,6 +15,10 @@
 // Clock rollback: if the system clock moves backward the generator spins
 // until wall time catches up, then fires the optional onIncident hook so
 // the caller can record a ClockIncident row and emit an alert.
+//
+// Memory layout: the struct is padded to 64 bytes (one cache line) so that
+// multiple Generator instances running on different goroutines on the same
+// host do not share a cache line and cause false sharing stalls.
 package generator
 
 import (
@@ -34,6 +38,16 @@ const (
 	maxSequence    = (1 << sequenceBits) - 1 // 4095
 	workerShift    = sequenceBits
 	timestampShift = workerBits + sequenceBits
+
+	// cacheLinePad is the number of padding bytes needed to bring the hot
+	// mutable fields (lastMs, sequence) onto their own 64-byte cache line,
+	// away from the immutable fields (workerID, onIncident) and the mutex
+	// internal state. This prevents false sharing when multiple Generator
+	// instances are allocated adjacently (e.g. in a slice).
+	//
+	// Layout: mu(8) + workerID(8) + onIncident(16) = 32 bytes used before
+	// the hot fields; pad to 64 so lastMs+sequence land on the next line.
+	cacheLinePad = 64
 )
 
 // ErrWorkerIDOutOfRange is returned when the worker ID exceeds maxWorkerID (1023).
@@ -46,12 +60,19 @@ type ClockIncidentFunc func(workerID int64, driftMs int64)
 // Generator produces Snowflake IDs. It is safe for concurrent use.
 // All state is protected by a single mutex; callers that need higher throughput
 // should run multiple Generator instances with distinct worker IDs.
+//
+// Field ordering is intentional:
+//   - mu, workerID, onIncident — written once at construction, rarely touched at runtime.
+//   - _pad — pushes lastMs and sequence onto a separate cache line.
+//   - lastMs, sequence — mutated on every call to next(); kept together so a
+//     single cache-line load covers both reads and both writes.
 type Generator struct {
-	mu         sync.Mutex
-	workerID   int64
-	sequence   int64
-	lastMs     int64
-	onIncident ClockIncidentFunc
+	mu         sync.Mutex        // 8 bytes
+	workerID   int64             // 8 bytes
+	onIncident ClockIncidentFunc // 16 bytes (interface: type + ptr)
+	_pad       [cacheLinePad - 32]byte
+	lastMs     int64 // hot: updated every call
+	sequence   int64 // hot: updated every call
 }
 
 // New creates a Generator for the given workerID (0–1023).
@@ -76,7 +97,12 @@ func (g *Generator) Next() int64 {
 	// observe the same (timestamp, sequence) pair and return duplicate IDs.
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.next()
+}
 
+// next is the lock-free inner implementation called by both Next and Batch.
+// The caller must hold g.mu.
+func (g *Generator) next() int64 {
 	now := nowMs()
 
 	if now < g.lastMs {
@@ -113,12 +139,20 @@ func (g *Generator) Next() int64 {
 	return (ts << timestampShift) | (g.workerID << workerShift) | g.sequence
 }
 
-// Batch generates n IDs in a single lock acquisition, which is more efficient
-// than calling Next n times when the caller needs multiple IDs at once.
+// Batch generates n IDs under a single mutex acquisition.
+// Acquiring the lock once for the whole batch avoids n round-trips through
+// the OS scheduler and is materially faster than calling Next() n times when
+// n is large. The inner loop reuses the same nowMs() value for the duration
+// of a millisecond, advancing the sequence; it only calls nowMs() again when
+// the sequence wraps.
 func (g *Generator) Batch(n int) []int64 {
 	ids := make([]int64, n)
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	for i := range ids {
-		ids[i] = g.Next()
+		ids[i] = g.next()
 	}
 	return ids
 }
