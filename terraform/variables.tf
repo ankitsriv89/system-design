@@ -8,8 +8,9 @@
 # ── Terraform Cloud ───────────────────────────────────────────────────────────
 
 variable "tfc_organization" {
-  description = "Your Terraform Cloud organization name (shown at app.terraform.io)"
+  description = "Terraform Cloud organization name. Only needed if using the cloud {} backend."
   type        = string
+  default     = ""
 }
 
 variable "tfc_workspace" {

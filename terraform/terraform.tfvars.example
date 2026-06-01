@@ -1,0 +1,32 @@
+# =============================================================================
+# terraform.tfvars.example — Copy to terraform.tfvars and fill in values.
+#
+# terraform.tfvars is GITIGNORED — never commit it.
+# Values come from the OCI Console config snippet shown after adding an API key.
+# =============================================================================
+
+# ── OCI identity ──────────────────────────────────────────────────────────────
+# All four values are in the config snippet OCI shows after you add an API key:
+#   Profile → My profile → API keys → Add API key → Configuration File Preview
+tenancy_ocid         = "ocid1.tenancy.oc1..aaaaaaaa..."
+compartment_ocid     = "ocid1.tenancy.oc1..aaaaaaaa..."  # same as tenancy_ocid (root compartment)
+user_ocid            = "ocid1.user.oc1..aaaaaaaa..."
+api_fingerprint      = "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
+api_private_key_path = "~/.oci/oci_api_key.pem"
+
+# ── Region (pick your home region) ───────────────────────────────────────────
+# Common free-tier regions:
+#   ap-mumbai-1       India (Mumbai)
+#   ap-singapore-1    Singapore
+#   us-ashburn-1      US East
+#   eu-frankfurt-1    Europe (Frankfurt)
+region = "ap-mumbai-1"
+
+# ── SSH access ────────────────────────────────────────────────────────────────
+ssh_public_key   = "ssh-rsa AAAA...your-public-key..."
+# Restrict to your home IP for better security:
+# ssh_allowed_cidr = "1.2.3.4/32"
+ssh_allowed_cidr = "0.0.0.0/0"
+
+# ── Repo ──────────────────────────────────────────────────────────────────────
+repo_url = "https://github.com/ankitsriv89/system-design.git"

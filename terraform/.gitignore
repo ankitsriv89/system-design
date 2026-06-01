@@ -1,0 +1,17 @@
+# Terraform state — never commit (stored in Terraform Cloud)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Local variable values — contain secrets
+terraform.tfvars
+
+# Crash log
+crash.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

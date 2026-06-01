@@ -25,3 +25,12 @@ Thumbs.db
 
 # Docker volumes (local data, not code)
 **/data/
+
+# Terraform — never commit state or real credentials
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+terraform/*.tfvars
+!terraform/terraform.tfvars.example

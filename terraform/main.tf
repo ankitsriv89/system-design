@@ -8,23 +8,29 @@
 #   - 200 GB block volume attached to the instance
 #   - Object Storage bucket (for future use / artefacts)
 #
-# State is stored in Terraform Cloud (free tier).
-# Configure workspace in terraform.tf before running.
+# State: local (terraform.tfstate) by default.
+# To use Terraform Cloud instead, uncomment the cloud {} block below and
+# remove or comment out this comment block.
 # =============================================================================
 
 terraform {
   # ---------------------------------------------------------------------------
-  # Terraform Cloud backend — stores state remotely (free tier).
-  # Set TF_CLOUD_ORGANIZATION or replace "your-org" with your org name.
-  # Create the workspace at: https://app.terraform.io
+  # LOCAL STATE (default) — state file lives at terraform/terraform.tfstate.
+  # Add terraform.tfstate* to .gitignore (already there) — never commit state.
   # ---------------------------------------------------------------------------
-  cloud {
-    organization = var.tfc_organization
 
-    workspaces {
-      name = var.tfc_workspace
-    }
-  }
+  # ---------------------------------------------------------------------------
+  # OPTIONAL: Terraform Cloud remote state.
+  # Uncomment this block if you want to store state at app.terraform.io.
+  # Create a free workspace first, then set tfc_organization/tfc_workspace
+  # in terraform.tfvars.
+  # ---------------------------------------------------------------------------
+  # cloud {
+  #   organization = var.tfc_organization
+  #   workspaces {
+  #     name = var.tfc_workspace
+  #   }
+  # }
 
   required_providers {
     oci = {
