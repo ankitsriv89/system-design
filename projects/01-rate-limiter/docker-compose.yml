@@ -1,40 +1,50 @@
+# docker-compose.yml — Rate Limiter project stack
+#
+# Prerequisites: shared infra must be running first.
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# One-time database setup:
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE DATABASE ratelimiter;"
+#   docker exec -it infra-postgres-1 psql -U admin -c "CREATE USER rl WITH PASSWORD 'rl';"
+#   docker exec -it infra-postgres-1 psql -U admin -c "GRANT ALL PRIVILEGES ON DATABASE ratelimiter TO rl;"
+#
+# Then start this project:
+#   docker compose up -d
+
 services:
   redis:
     image: redis:8.8-alpine
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
 
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: rl
-      POSTGRES_PASSWORD: rl
-      POSTGRES_DB: ratelimiter
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rl -d ratelimiter"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   server:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
-      REDIS_ADDR: redis:6379
-      DATABASE_URL: postgres://rl:rl@postgres:5432/ratelimiter?sslmode=disable
-      LISTEN_ADDR: :8080
+      LISTEN_ADDR: ":8081"
+      REDIS_ADDR: "redis:6379"
+      DATABASE_URL: "postgres://rl:rl@postgres:5432/ratelimiter?sslmode=disable"
     depends_on:
       redis:
         condition: service_healthy
-      postgres:
-        condition: service_healthy
+    networks:
+      - default
+      - infra
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  default: {}
+  infra:
+    external: true

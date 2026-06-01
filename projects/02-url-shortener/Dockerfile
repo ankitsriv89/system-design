@@ -29,6 +29,6 @@ WORKDIR /app
 COPY --from=builder /url-shortener /url-shortener
 COPY --from=builder /app/web ./web
 
-EXPOSE 8081
+EXPOSE 8082
 
 ENTRYPOINT ["/url-shortener"]

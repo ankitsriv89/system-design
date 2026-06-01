@@ -1,0 +1,23 @@
+# =============================================================================
+# terraform/aws/terraform.tfvars.example
+#
+# Copy this to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit it.
+# =============================================================================
+
+aws_region               = "ap-south-1"
+availability_zone_suffix = "c"          # ap-south-1c is cheapest for t4g Spot
+instance_type            = "t4g.large"
+spot_price_max           = "0.0448"     # t4g.large on-demand cap; won't exceed this
+
+project_name             = "system-design"
+
+# Paste the contents of ~/.ssh/id_ed25519.pub (or your preferred key)
+ssh_public_key = "ssh-ed25519 AAAA... your-email@example.com"
+
+# Restrict SSH + observability to your home IP for security
+ssh_allowed_cidr           = "0.0.0.0/0"   # Change to <your-ip>/32
+observability_allowed_cidr = "0.0.0.0/0"   # Change to <your-ip>/32
+
+repo_url     = "https://github.com/ankitsriv89/system-design.git"
+github_token = ""  # Leave empty for public repos

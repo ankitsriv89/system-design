@@ -10,5 +10,5 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /rate-limiter /rate-limiter
 COPY --from=builder /app/web ./web
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["/rate-limiter"]

@@ -1,0 +1,403 @@
+{
+  "title": "Host System — CPU / Memory / Disk / Network / Uptime",
+  "uid": "host-system",
+  "schemaVersion": 39,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["system", "node-exporter"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Host Uptime",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 3600 },
+              { "color": "green", "value": 86400 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "time() - node_boot_time_seconds",
+        "legendFormat": "uptime"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "CPU Usage %",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)",
+        "legendFormat": "cpu %"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Memory Usage %",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))",
+        "legendFormat": "mem %"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "Memory Used / Total",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      },
+      "targets": [
+        { "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "used" },
+        { "expr": "node_memory_MemTotal_bytes", "legendFormat": "total" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Load Average (1m / 5m / 15m)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1.5 },
+              { "color": "red", "value": 3 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        { "expr": "node_load1",  "legendFormat": "1m" },
+        { "expr": "node_load5",  "legendFormat": "5m" },
+        { "expr": "node_load15", "legendFormat": "15m" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Disk Used %",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "100 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} * 100)",
+        "legendFormat": "disk %"
+      }]
+    },
+    {
+      "id": 7,
+      "title": "CPU Usage Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[2m])) * 100)",
+          "legendFormat": "total cpu %"
+        },
+        {
+          "expr": "avg by(instance) (rate(node_cpu_seconds_total{mode=\"user\"}[2m])) * 100",
+          "legendFormat": "user"
+        },
+        {
+          "expr": "avg by(instance) (rate(node_cpu_seconds_total{mode=\"system\"}[2m])) * 100",
+          "legendFormat": "system"
+        },
+        {
+          "expr": "avg by(instance) (rate(node_cpu_seconds_total{mode=\"iowait\"}[2m])) * 100",
+          "legendFormat": "iowait"
+        },
+        {
+          "expr": "avg by(instance) (rate(node_cpu_seconds_total{mode=\"steal\"}[2m])) * 100",
+          "legendFormat": "steal"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Memory Breakdown",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        { "expr": "node_memory_MemTotal_bytes", "legendFormat": "total" },
+        { "expr": "node_memory_MemAvailable_bytes", "legendFormat": "available" },
+        { "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes", "legendFormat": "used" },
+        { "expr": "node_memory_Cached_bytes + node_memory_Buffers_bytes", "legendFormat": "cache+buffers" },
+        { "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes", "legendFormat": "swap used" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Network Throughput (bytes/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "rx (in)"
+        },
+        {
+          "expr": "sum(rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "tx (out)"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Network Packets/s",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_network_receive_packets_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "rx packets/s"
+        },
+        {
+          "expr": "sum(rate(node_network_transmit_packets_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "tx packets/s"
+        },
+        {
+          "expr": "sum(rate(node_network_receive_errs_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "rx errors/s"
+        },
+        {
+          "expr": "sum(rate(node_network_transmit_errs_total{device!~\"lo|docker.*|veth.*\"}[2m]))",
+          "legendFormat": "tx errors/s"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Disk I/O (bytes/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_disk_read_bytes_total[2m]))",
+          "legendFormat": "read"
+        },
+        {
+          "expr": "sum(rate(node_disk_written_bytes_total[2m]))",
+          "legendFormat": "write"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Disk I/O Utilisation % (await)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [{
+        "expr": "rate(node_disk_io_time_seconds_total[2m]) * 100",
+        "legendFormat": "{{device}} util %"
+      }]
+    },
+    {
+      "id": 13,
+      "title": "Filesystem Usage",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 85 }
+            ]
+          },
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "expr": "node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs\"} - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs\"}",
+          "legendFormat": "{{mountpoint}} used"
+        },
+        {
+          "expr": "node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs\"}",
+          "legendFormat": "{{mountpoint}} total"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Open File Descriptors",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "node_filefd_allocated", "legendFormat": "allocated fds" },
+        { "expr": "node_filefd_maximum",   "legendFormat": "max fds" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "TCP Connections by State",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 34, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [{
+        "expr": "node_netstat_Tcp_CurrEstab",
+        "legendFormat": "ESTABLISHED"
+      },
+      {
+        "expr": "node_sockstat_TCP_tw",
+        "legendFormat": "TIME_WAIT"
+      }]
+    },
+    {
+      "id": 16,
+      "title": "System Context Switches / Interrupts",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      },
+      "targets": [
+        { "expr": "rate(node_context_switches_total[2m])", "legendFormat": "context switches/s" },
+        { "expr": "rate(node_intr_total[2m])",             "legendFormat": "interrupts/s" }
+      ]
+    }
+  ]
+}

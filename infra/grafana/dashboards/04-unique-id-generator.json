@@ -1,0 +1,330 @@
+{
+  "title": "Unique ID Generator — Golden Signals",
+  "uid": "uid-gen",
+  "schemaVersion": 39,
+  "refresh": "10s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["project", "unique-id-generator"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "ID Generation Rate (IDs/s)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "rate(uniqueid_ids_generated_total[1m])",
+        "legendFormat": "ids/s"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "Clock Rollbacks",
+      "type": "stat",
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "uniqueid_clock_rollback_total",
+        "legendFormat": "rollbacks"
+      }]
+    },
+    {
+      "id": 3,
+      "title": "Sequence Exhaustions",
+      "type": "stat",
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "uniqueid_sequence_exhaustions_total",
+        "legendFormat": "exhaustions"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "Lease Failures",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "uniqueid_lease_failures_total",
+        "legendFormat": "failures"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "HTTP Request Rate (req/s)",
+      "type": "stat",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      },
+      "targets": [{
+        "expr": "sum(rate(uniqueid_http_requests_total[1m]))",
+        "legendFormat": "req/s"
+      }]
+    },
+    {
+      "id": 6,
+      "title": "HTTP Error Rate %",
+      "type": "stat",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "100 * sum(rate(uniqueid_http_requests_total{status=~\"5..\"}[1m])) / sum(rate(uniqueid_http_requests_total[1m]))",
+        "legendFormat": "error %"
+      }]
+    },
+    {
+      "id": 7,
+      "title": "ID Generation Rate Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "fillOpacity": 15 }
+        }
+      },
+      "targets": [{
+        "expr": "rate(uniqueid_ids_generated_total[1m])",
+        "legendFormat": "ids/s"
+      }]
+    },
+    {
+      "id": 8,
+      "title": "Generation Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "µs",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(uniqueid_generation_duration_seconds_bucket[1m])) by (le)) * 1e6",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(uniqueid_generation_duration_seconds_bucket[1m])) by (le)) * 1e6",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(uniqueid_generation_duration_seconds_bucket[1m])) by (le)) * 1e6",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "HTTP Request Rate by Path",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      },
+      "targets": [{
+        "expr": "sum(rate(uniqueid_http_requests_total[1m])) by (method, path)",
+        "legendFormat": "{{method}} {{path}}"
+      }]
+    },
+    {
+      "id": 10,
+      "title": "HTTP Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(uniqueid_http_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(uniqueid_http_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(uniqueid_http_duration_seconds_bucket[1m])) by (le)) * 1000",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Lease Renewals vs Failures",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops" }
+      },
+      "targets": [
+        { "expr": "rate(uniqueid_lease_renewals_total[1m])", "legendFormat": "renewals/s" },
+        { "expr": "rate(uniqueid_lease_failures_total[1m])", "legendFormat": "failures/s" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Clock Drift Magnitude (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(uniqueid_clock_drift_ms_bucket[5m])) by (le))",
+          "legendFormat": "p99 drift ms"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Sequence Exhaustions Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [{
+        "expr": "rate(uniqueid_sequence_exhaustions_total[1m])",
+        "legendFormat": "exhaustions/s"
+      }]
+    },
+    {
+      "id": 14,
+      "title": "Go Runtime — Goroutines",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "go_goroutines{job=\"04-unique-id-generator\"}",        "legendFormat": "goroutines" },
+        { "expr": "go_threads{job=\"04-unique-id-generator\"}",           "legendFormat": "os threads" },
+        { "expr": "process_open_fds{job=\"04-unique-id-generator\"}",    "legendFormat": "open fds" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Go GC — Heap Alloc / In-Use",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 34, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" }
+      },
+      "targets": [
+        { "expr": "go_memstats_alloc_bytes{job=\"04-unique-id-generator\"}",      "legendFormat": "alloc" },
+        { "expr": "go_memstats_heap_inuse_bytes{job=\"04-unique-id-generator\"}", "legendFormat": "heap in-use" },
+        { "expr": "go_memstats_heap_sys_bytes{job=\"04-unique-id-generator\"}",   "legendFormat": "heap sys" }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Go GC Pause Duration (p99)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 34, "w": 12, "h": 6 },
+      "fieldConfig": {
+        "defaults": { "unit": "µs" }
+      },
+      "targets": [{
+        "expr": "histogram_quantile(0.99, sum(rate(go_gc_duration_seconds_bucket{job=\"04-unique-id-generator\"}[5m])) by (le)) * 1e6",
+        "legendFormat": "p99 GC pause µs"
+      }]
+    }
+  ]
+}
