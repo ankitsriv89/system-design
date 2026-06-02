@@ -1,4 +1,11 @@
 // Package main wires together all components and starts the load balancer server.
+//
+// Two listeners are started:
+//   - Public  (ADDR, default :8086)  — /proxy/*, /healthz, /metrics, /static/*, /
+//   - Admin   (ADMIN_ADDR, default 127.0.0.1:8087) — /v1/* control plane
+//
+// The admin listener is bound to loopback by default and requires a bearer token
+// (ADMIN_TOKEN env var).  Set ADMIN_TOKEN to a long random secret in production.
 package main
 
 import (
@@ -21,15 +28,20 @@ func main() {
 	log, _ := zap.NewProduction()
 	defer log.Sync() //nolint:errcheck
 
-	addr := env("ADDR", ":8086")
-	dsn := env("DATABASE_URL", "")
+	addr      := env("ADDR",       ":8086")
+	adminAddr := env("ADMIN_ADDR", "127.0.0.1:8087")
+	adminToken := env("ADMIN_TOKEN", "")
+	dsn       := env("DATABASE_URL", "")
+
+	if adminToken == "" {
+		log.Warn("ADMIN_TOKEN not set — admin API is unauthenticated. Set ADMIN_TOKEN in production.")
+	}
 
 	lb := balancer.New(10*time.Second, 3*time.Second, log)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Persist backends to Postgres when DATABASE_URL is set.
 	var st *store.Store
 	if dsn != "" {
 		var err error
@@ -38,31 +50,42 @@ func main() {
 			log.Warn("postgres unavailable, running without persistence", zap.Error(err))
 		} else {
 			defer st.Close()
-			// Reload backends persisted from a prior run.
 			reloadBackends(ctx, lb, st, log)
 		}
 	}
 
-	// Drain health events into the store (if available).
 	go drainEvents(ctx, lb, st, log)
-
 	lb.Start(ctx)
 
-	r := mux.NewRouter()
-	api.New(ctx, lb, st, log, r)
+	publicRouter := mux.NewRouter()
+	adminRouter  := mux.NewRouter()
+	api.New(ctx, lb, st, log, publicRouter, adminRouter, adminToken)
 
-	srv := &http.Server{
+	publicSrv := &http.Server{
 		Addr:         addr,
-		Handler:      r,
+		Handler:      publicRouter,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
+	adminSrv := &http.Server{
+		Addr:         adminAddr,
+		Handler:      adminRouter,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	go func() {
-		log.Info("load balancer listening", zap.String("addr", addr))
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("server error", zap.Error(err))
+		log.Info("public listener", zap.String("addr", addr))
+		if err := publicSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("public server error", zap.Error(err))
+		}
+	}()
+	go func() {
+		log.Info("admin listener", zap.String("addr", adminAddr))
+		if err := adminSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal("admin server error", zap.Error(err))
 		}
 	}()
 
@@ -73,8 +96,11 @@ func main() {
 
 	shutCtx, shutCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutCancel()
-	if err := srv.Shutdown(shutCtx); err != nil {
-		log.Error("graceful shutdown failed", zap.Error(err))
+	if err := publicSrv.Shutdown(shutCtx); err != nil {
+		log.Error("public shutdown failed", zap.Error(err))
+	}
+	if err := adminSrv.Shutdown(shutCtx); err != nil {
+		log.Error("admin shutdown failed", zap.Error(err))
 	}
 }
 
@@ -84,10 +110,15 @@ func reloadBackends(ctx context.Context, lb *balancer.LoadBalancer, st *store.St
 		log.Error("reload backends from DB", zap.Error(err))
 		return
 	}
+	ok := 0
 	for _, b := range backends {
-		lb.AddBackend(ctx, b.Service, b.URL, b.Weight)
+		if err := lb.AddBackend(ctx, b.Service, b.URL, b.Weight); err != nil {
+			log.Warn("reload backend rejected (SSRF check)", zap.String("url", b.URL), zap.Error(err))
+			continue
+		}
+		ok++
 	}
-	log.Info("reloaded backends from DB", zap.Int("count", len(backends)))
+	log.Info("reloaded backends from DB", zap.Int("loaded", ok), zap.Int("total", len(backends)))
 }
 
 func drainEvents(ctx context.Context, lb *balancer.LoadBalancer, st *store.Store, log *zap.Logger) {

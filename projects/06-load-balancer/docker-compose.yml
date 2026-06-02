@@ -5,9 +5,12 @@ services:
     build: .
     image: 06-load-balancer:latest
     ports:
-      - "8086:8086"
+      - "127.0.0.1:8086:8086"   # public: proxy + UI (loopback only; Caddy terminates TLS)
+      - "127.0.0.1:8087:8087"   # admin: control plane (loopback only, never exposed directly)
     environment:
       ADDR: ":8086"
+      ADMIN_ADDR: ":8087"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"   # set a strong secret in .env / cloud-init
       DATABASE_URL: "postgres://lb:lb@postgres:5432/loadbalancer?sslmode=disable"
     networks:
       - infra

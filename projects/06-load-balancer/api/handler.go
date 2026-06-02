@@ -1,9 +1,14 @@
 // Package api provides HTTP handlers for the load balancer control plane
 // and the reverse-proxy data plane.
+//
+// Route split:
+//   publicRouter  — /proxy/*, /healthz, /metrics, /static/*, /
+//   adminRouter   — /v1/* (control plane, requires bearer token)
 package api
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -24,47 +29,81 @@ import (
 
 // Handler wires together control-plane and data-plane endpoints.
 type Handler struct {
-	lb    *balancer.LoadBalancer
-	store *store.Store
-	ctx   context.Context
-	log   *zap.Logger
-
-	// Pre-built static responses.
+	lb          *balancer.LoadBalancer
+	store       *store.Store
+	ctx         context.Context
+	log         *zap.Logger
+	adminToken  string
 	healthzBody []byte
 }
 
-// New constructs a Handler and registers all routes on r.
-func New(ctx context.Context, lb *balancer.LoadBalancer, st *store.Store, log *zap.Logger, r *mux.Router) *Handler {
+// New registers routes on two separate routers:
+//   - publicRouter: data plane + observability (no auth required)
+//   - adminRouter:  control plane /v1/* (bearer token required when adminToken != "")
+func New(
+	ctx context.Context,
+	lb *balancer.LoadBalancer,
+	st *store.Store,
+	log *zap.Logger,
+	publicRouter *mux.Router,
+	adminRouter *mux.Router,
+	adminToken string,
+) *Handler {
 	h := &Handler{
 		lb:          lb,
 		store:       st,
 		ctx:         ctx,
 		log:         log,
+		adminToken:  adminToken,
 		healthzBody: []byte(`{"status":"ok"}`),
 	}
 
-	// Control plane
-	r.HandleFunc("/healthz", h.healthz).Methods(http.MethodGet)
-	r.HandleFunc("/v1/backends", h.listBackends).Methods(http.MethodGet)
-	r.HandleFunc("/v1/backends/{service}", h.addBackend).Methods(http.MethodPost)
-	r.HandleFunc("/v1/backends/{service}/{backend}", h.removeBackend).Methods(http.MethodDelete)
-	r.HandleFunc("/v1/backends/{service}/algorithm", h.setAlgorithm).Methods(http.MethodPut)
-	r.HandleFunc("/v1/backends/{service}/health", h.healthHistory).Methods(http.MethodGet)
-	r.HandleFunc("/v1/stats", h.stats).Methods(http.MethodGet)
-
-	// Data plane reverse proxy
-	r.PathPrefix("/proxy/{service}/").HandlerFunc(h.proxy)
-
-	// Metrics
-	r.Handle("/metrics", promhttp.Handler())
-
-	// Static files + SPA root
-	r.PathPrefix("/static/").Handler(
+	// ── Public router: data plane ────────────────────────────────
+	publicRouter.HandleFunc("/healthz", h.healthz).Methods(http.MethodGet)
+	publicRouter.PathPrefix("/proxy/{service}/").HandlerFunc(h.proxy)
+	publicRouter.Handle("/metrics", promhttp.Handler())
+	publicRouter.PathPrefix("/static/").Handler(
 		http.StripPrefix("/static/", http.FileServer(http.Dir("web"))),
 	)
-	r.HandleFunc("/", h.root).Methods(http.MethodGet)
+	publicRouter.HandleFunc("/", h.root).Methods(http.MethodGet)
+
+	// ── Admin router: control plane ──────────────────────────────
+	// All /v1/* routes are wrapped with auth middleware.
+	admin := adminRouter.PathPrefix("/v1").Subrouter()
+	admin.Use(h.requireToken)
+
+	admin.HandleFunc("/backends", h.listBackends).Methods(http.MethodGet)
+	admin.HandleFunc("/backends/{service}", h.addBackend).Methods(http.MethodPost)
+	admin.HandleFunc("/backends/{service}/{backend}", h.removeBackend).Methods(http.MethodDelete)
+	admin.HandleFunc("/backends/{service}/algorithm", h.setAlgorithm).Methods(http.MethodPut)
+	admin.HandleFunc("/backends/{service}/health", h.healthHistory).Methods(http.MethodGet)
+	admin.HandleFunc("/stats", h.stats).Methods(http.MethodGet)
+
+	// Also expose read-only stats on the public router so the UI can poll it
+	// without hitting the admin port. Write operations remain admin-only.
+	publicRouter.HandleFunc("/v1/stats", h.stats).Methods(http.MethodGet)
+	publicRouter.HandleFunc("/v1/backends/{service}/health", h.healthHistory).Methods(http.MethodGet)
 
 	return h
+}
+
+// requireToken is a middleware that enforces Bearer token authentication on
+// admin routes. If adminToken is empty the middleware is a no-op (dev mode).
+func (h *Handler) requireToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if h.adminToken == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		got := r.Header.Get("Authorization")
+		want := "Bearer " + h.adminToken
+		// Constant-time compare to prevent timing attacks.
+		if subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
+			writeError(w, http.StatusUnauthorized, "invalid or missing admin token")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (h *Handler) root(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +136,11 @@ func (h *Handler) addBackend(w http.ResponseWriter, r *http.Request) {
 		body.Weight = 1
 	}
 
-	h.lb.AddBackend(h.ctx, service, body.URL, body.Weight)
+	// SSRF validation happens inside lb.AddBackend via urlutil.Validate.
+	if err := h.lb.AddBackend(h.ctx, service, body.URL, body.Weight); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	if h.store != nil {
 		if err := h.store.UpsertBackend(r.Context(), service, body.URL, body.Weight, "healthy"); err != nil {
@@ -117,8 +160,7 @@ func (h *Handler) addBackend(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) removeBackend(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	service := vars["service"]
-	rawBackend := vars["backend"]
-	backendURL, err := url.QueryUnescape(rawBackend)
+	backendURL, err := url.QueryUnescape(vars["backend"])
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid backend URL encoding")
 		return
@@ -157,13 +199,12 @@ func (h *Handler) setAlgorithm(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"algorithm": string(body.Algorithm)})
 }
 
-// listBackends returns all backends across all services, or for a specific service.
-// GET /v1/backends?service=svc
-func (h *Handler) listBackends(w http.ResponseWriter, r *http.Request) {
+// listBackends returns all backends across all services.
+func (h *Handler) listBackends(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, h.lb.Stats())
 }
 
-// stats returns real-time backend statistics.
+// stats returns real-time backend statistics grouped by service.
 func (h *Handler) stats(w http.ResponseWriter, _ *http.Request) {
 	type serviceView struct {
 		Service   string                  `json:"service"`
@@ -219,7 +260,6 @@ func (h *Handler) healthHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 // proxy reverse-proxies requests to a healthy backend.
-// POST|GET|... /proxy/{service}/...
 func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 	service := mux.Vars(r)["service"]
 
@@ -242,7 +282,6 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Track active connections for least-conn algorithm.
 		atomic.AddInt64(&backend.ActiveConns, 1)
 		atomic.AddUint64(&backend.TotalConns, 1)
 		metrics.ActiveConnections.WithLabelValues(service, backend.URL).Inc()
@@ -251,7 +290,7 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
-		// Strip the /proxy/{service} prefix so the upstream sees the original path.
+		// Strip the /proxy/{service} prefix so the upstream sees the real path.
 		r2 := r.Clone(r.Context())
 		prefix := fmt.Sprintf("/proxy/%s", service)
 		r2.URL.Path = r.URL.Path[len(prefix):]
@@ -259,6 +298,10 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 			r2.URL.Path = "/"
 		}
 		r2.URL.RawPath = ""
+
+		// Strip hop-by-hop and sensitive headers before forwarding.
+		sanitizeHeaders(r2)
+
 		proxy.ServeHTTP(rw, r2)
 
 		dur := time.Since(start)
@@ -266,9 +309,7 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 		metrics.ActiveConnections.WithLabelValues(service, backend.URL).Dec()
 		metrics.RequestDuration.WithLabelValues(service, backend.URL).Observe(dur.Seconds())
 		backend.RecordLatency(float64(dur.Milliseconds()))
-
-		code := strconv.Itoa(rw.code)
-		metrics.RequestsTotal.WithLabelValues(service, backend.URL, code).Inc()
+		metrics.RequestsTotal.WithLabelValues(service, backend.URL, strconv.Itoa(rw.code)).Inc()
 
 		h.log.Debug("proxied request",
 			zap.String("service", service),
@@ -285,6 +326,22 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 
 	h.log.Warn("all retries exhausted", zap.String("service", service), zap.Error(lastErr))
 	writeError(w, http.StatusBadGateway, "upstream error after retries")
+}
+
+// sanitizeHeaders removes headers that must not be forwarded to upstreams:
+// spoofable X-Forwarded-* fields and the client's Authorization/Cookie so
+// they are not leaked to an untrusted backend.
+func sanitizeHeaders(r *http.Request) {
+	for _, h := range []string{
+		"X-Forwarded-For",
+		"X-Forwarded-Host",
+		"X-Forwarded-Proto",
+		"X-Real-Ip",
+		"Authorization",
+		"Cookie",
+	} {
+		r.Header.Del(h)
+	}
 }
 
 // responseRecorder captures the status code written by the upstream proxy.

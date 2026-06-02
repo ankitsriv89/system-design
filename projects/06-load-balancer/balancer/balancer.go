@@ -6,12 +6,16 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
+
+	"github.com/ankitsriv89/06-load-balancer/urlutil"
 )
 
 // Status represents the health state of a backend.
@@ -246,13 +250,44 @@ type HealthChecker struct {
 
 // NewHealthChecker constructs a checker. events is the channel where health
 // observations are published; caller must drain it.
+//
+// The probe HTTP client uses a custom DialContext that re-validates the resolved
+// IP at connect time, defeating DNS rebinding between backend registration and
+// the health probe. Redirects are disabled so a backend cannot redirect health
+// checks to an internal URL.
 func NewHealthChecker(
 	interval, timeout time.Duration,
 	events chan<- HealthEvent,
 	log *zap.Logger,
 ) *HealthChecker {
+	dialer := &net.Dialer{Timeout: timeout}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("healthcheck dial: split host/port: %w", err)
+			}
+			ips, err := net.LookupIP(host)
+			if err != nil {
+				return nil, fmt.Errorf("healthcheck dial: resolve %q: %w", host, err)
+			}
+			for _, ip := range ips {
+				if urlutil.IsDenied(ip) {
+					return nil, fmt.Errorf("healthcheck dial: %q resolved to restricted IP %s", host, ip)
+				}
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(host, port))
+		},
+	}
 	return &HealthChecker{
-		client:   &http.Client{Timeout: timeout},
+		client: &http.Client{
+			Timeout:   timeout,
+			Transport: transport,
+			// Disable redirects — a backend must not redirect /healthz to an internal URL.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 		interval: interval,
 		timeout:  timeout,
 		log:      log,
@@ -290,9 +325,14 @@ func (hc *HealthChecker) checkLoop(ctx context.Context, service string, pool *Po
 }
 
 func (hc *HealthChecker) probe(service string, b *Backend) {
-	url := b.URL + "/healthz"
+	base, err := url.Parse(b.URL)
+	if err != nil {
+		hc.log.Warn("healthcheck: invalid backend URL", zap.String("url", b.URL), zap.Error(err))
+		return
+	}
+	probeURL := base.ResolveReference(&url.URL{Path: "/healthz"}).String()
 	start := time.Now()
-	resp, err := hc.client.Get(url) //nolint:noctx
+	resp, err := hc.client.Get(probeURL) //nolint:noctx
 	latencyMs := int(time.Since(start).Milliseconds())
 
 	var newStatus Status
@@ -369,7 +409,12 @@ func (lb *LoadBalancer) Start(ctx context.Context) {
 }
 
 // AddBackend registers a backend in a service pool. Creates the pool if new.
-func (lb *LoadBalancer) AddBackend(ctx context.Context, service, url string, weight int) {
+// Returns an error if backendURL fails SSRF validation.
+func (lb *LoadBalancer) AddBackend(ctx context.Context, service, backendURL string, weight int) error {
+	if _, err := urlutil.Validate(backendURL); err != nil {
+		return fmt.Errorf("balancer: AddBackend: %w", err)
+	}
+
 	lb.mu.Lock()
 	pool, exists := lb.pools[service]
 	if !exists {
@@ -379,7 +424,7 @@ func (lb *LoadBalancer) AddBackend(ctx context.Context, service, url string, wei
 	lb.mu.Unlock()
 
 	b := &Backend{
-		URL:     url,
+		URL:     backendURL,
 		Service: service,
 		Weight:  weight,
 		status:  StatusHealthy,
@@ -389,6 +434,7 @@ func (lb *LoadBalancer) AddBackend(ctx context.Context, service, url string, wei
 	if !exists {
 		lb.checker.WatchPool(ctx, service, pool)
 	}
+	return nil
 }
 
 // RemoveBackend removes a backend from a service pool.
