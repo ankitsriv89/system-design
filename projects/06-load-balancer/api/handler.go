@@ -11,6 +11,7 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -25,16 +26,57 @@ import (
 	"github.com/ankitsriv89/06-load-balancer/balancer"
 	"github.com/ankitsriv89/06-load-balancer/metrics"
 	"github.com/ankitsriv89/06-load-balancer/store"
+	"github.com/ankitsriv89/06-load-balancer/urlutil"
 )
 
 // Handler wires together control-plane and data-plane endpoints.
 type Handler struct {
-	lb          *balancer.LoadBalancer
-	store       *store.Store
-	ctx         context.Context
-	log         *zap.Logger
-	adminToken  string
-	healthzBody []byte
+	lb            *balancer.LoadBalancer
+	store         *store.Store
+	ctx           context.Context
+	log           *zap.Logger
+	adminToken    string
+	healthzBody   []byte
+	ssrfTransport http.RoundTripper // shared SSRF-safe transport for the reverse proxy
+}
+
+// newSSRFSafeTransport returns an http.Transport whose DialContext resolves the
+// target hostname, rejects any IP in the deny-list, then dials the resolved IP
+// directly. Dialling the IP (not the hostname) eliminates any race between the
+// TOCTOU DNS lookup in urlutil.Validate and what the kernel actually connects to.
+func newSSRFSafeTransport() http.RoundTripper {
+	dialer := &net.Dialer{
+		Timeout:   10 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	return &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("proxy dial: split host/port %q: %w", addr, err)
+			}
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, fmt.Errorf("proxy dial: resolve %q: %w", host, err)
+			}
+			if len(ips) == 0 {
+				return nil, fmt.Errorf("proxy dial: %q resolved to no addresses", host)
+			}
+			// Pick the first non-denied IP and dial it directly.
+			for _, ia := range ips {
+				if urlutil.IsDenied(ia.IP) {
+					continue
+				}
+				return dialer.DialContext(ctx, network, net.JoinHostPort(ia.IP.String(), port))
+			}
+			return nil, fmt.Errorf("proxy dial: all resolved IPs for %q are in restricted ranges", host)
+		},
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 }
 
 // New registers routes on two separate routers:
@@ -50,12 +92,13 @@ func New(
 	adminToken string,
 ) *Handler {
 	h := &Handler{
-		lb:          lb,
-		store:       st,
-		ctx:         ctx,
-		log:         log,
-		adminToken:  adminToken,
-		healthzBody: []byte(`{"status":"ok"}`),
+		lb:            lb,
+		store:         st,
+		ctx:           ctx,
+		log:           log,
+		adminToken:    adminToken,
+		healthzBody:   []byte(`{"status":"ok"}`),
+		ssrfTransport: newSSRFSafeTransport(),
 	}
 
 	// ── Public router: data plane ────────────────────────────────
@@ -290,6 +333,7 @@ func (h *Handler) proxy(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		proxy := httputil.NewSingleHostReverseProxy(target)
+		proxy.Transport = h.ssrfTransport // re-validates IP at dial time; defeats DNS rebinding
 		// Strip the /proxy/{service} prefix so the upstream sees the real path.
 		r2 := r.Clone(r.Context())
 		prefix := fmt.Sprintf("/proxy/%s", service)
