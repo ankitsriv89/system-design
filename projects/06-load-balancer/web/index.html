@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Load Balancer — System Design</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+  <div>
+    <h1>06 · Load Balancer</h1>
+    <div class="subtitle">System Design Interactive Tutorial</div>
+  </div>
+</header>
+
+<div class="app">
+  <!-- ── LEFT: Controls + concept ──────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">Controls &amp; Concept</div>
+    <div class="panel-body">
+
+      <details class="concept-card" open>
+        <summary>What is a Load Balancer?</summary>
+        <p>A <b>load balancer</b> distributes incoming requests across a pool of backend servers so that no single server becomes a bottleneck. It sits between clients and backends, hiding the pool's composition.</p>
+        <p><b>Why it matters:</b> single-server systems have a hard ceiling on throughput and availability. A load balancer lets you scale horizontally and route around failures transparently.</p>
+        <p><b>This implementation</b> is an L7 (HTTP) load balancer with four algorithms, active health checks, connection draining, retry budgets, and live Prometheus metrics.</p>
+      </details>
+
+      <details class="concept-card">
+        <summary>L4 vs L7 Load Balancing</summary>
+        <p><b>L4 (transport layer):</b> routes TCP/UDP streams by IP + port. Fast, protocol-agnostic, but cannot inspect content.</p>
+        <p><b>L7 (application layer):</b> understands HTTP — can route by URL, headers, cookies, or body. Enables sticky sessions, canary deployments, and smarter health checks. This project is L7.</p>
+      </details>
+
+      <details class="concept-card">
+        <summary>Health Checks &amp; Failure Modes</summary>
+        <p><b>Active probing:</b> the balancer polls <code>/healthz</code> on every backend every 10 s. A 5xx or timeout marks the backend unhealthy and removes it from rotation.</p>
+        <p><b>Failure modes:</b> backend flapping (rapid healthy↔unhealthy), retry storms (failed requests amplified), slow backends saturating connection pools.</p>
+        <p><b>Retry budget:</b> each request is retried at most 2 times on 5xx. Retries are counted and alerted.</p>
+      </details>
+
+      <!-- Service selector -->
+      <div class="section">
+        <div class="section-label">Service</div>
+        <input type="text" id="svc-input" value="web" placeholder="service name">
+      </div>
+
+      <!-- Add backend -->
+      <div class="section">
+        <div class="section-label">Add Backend</div>
+        <input type="text" id="be-url" placeholder="http://backend:port" value="http://httpbin.org">
+        <input type="number" id="be-weight" placeholder="weight" value="1" min="1" max="10">
+        <button class="btn-primary btn-full" id="btn-add">+ Add Backend</button>
+      </div>
+
+      <!-- Algorithm -->
+      <div class="section">
+        <div class="section-label">Algorithm</div>
+        <div class="algo-pills">
+          <button class="algo-pill active" data-algo="round_robin">Round Robin</button>
+          <button class="algo-pill" data-algo="least_connections">Least Conn</button>
+          <button class="algo-pill" data-algo="weighted_round_robin">Weighted RR</button>
+        </div>
+        <div class="algo-explain" id="algo-explain"></div>
+      </div>
+
+      <!-- Backend list -->
+      <div class="section">
+        <div class="section-label">Backends</div>
+        <div class="backend-list" id="backend-list"></div>
+      </div>
+
+      <!-- Failure injection -->
+      <div class="section">
+        <div class="section-label">Failure Injection</div>
+        <button class="btn-danger btn-full" id="btn-kill">Kill Random Backend</button>
+        <button class="btn-ok btn-full" id="btn-revive">Revive All</button>
+        <button class="btn-warn btn-full" id="btn-flood">Flood (10 requests)</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CENTER: Live animated visualization ──────────────────── -->
+  <div class="panel" id="viz-panel">
+    <div class="panel-title">Live Traffic Visualization</div>
+    <canvas id="viz-canvas"></canvas>
+    <div id="sim-bar">
+      <button class="btn-primary" id="btn-single">Send Request</button>
+      <button class="btn-warn"    id="btn-auto"  >Auto: OFF</button>
+    </div>
+    <div id="step-box">
+      Add backends and hit <strong>Send Request</strong> to watch traffic flow.
+    </div>
+  </div>
+
+  <!-- ── RIGHT: API log + stats ──────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-title">API Log &amp; Stats</div>
+    <div class="panel-body">
+
+      <div class="section">
+        <div class="section-label">Request Log</div>
+        <div id="log-list"></div>
+      </div>
+
+      <div class="section" style="margin-top:16px">
+        <div class="section-label">Backend Stats</div>
+        <table class="stats-table" id="stats-table">
+          <thead><tr>
+            <th>Backend</th><th>Active</th><th>Total</th><th>Lat ms</th>
+          </tr></thead>
+          <tbody id="stats-body"></tbody>
+        </table>
+      </div>
+
+      <div class="section" style="margin-top:16px">
+        <div class="section-label">Health History</div>
+        <canvas class="mini-chart" id="health-chart"></canvas>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

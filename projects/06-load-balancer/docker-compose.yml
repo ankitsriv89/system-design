@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  load-balancer:
+    build: .
+    image: 06-load-balancer:latest
+    ports:
+      - "8086:8086"
+    environment:
+      ADDR: ":8086"
+      DATABASE_URL: "postgres://lb:lb@postgres:5432/loadbalancer?sslmode=disable"
+    networks:
+      - infra
+    restart: unless-stopped
+    depends_on:
+      - echo1
+      - echo2
+      - echo3
+
+  # Three lightweight echo backends for demo / load tests
+  echo1:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo1", "-listen=:8001"]
+    ports:
+      - "8091:8001"
+    networks:
+      - infra
+    restart: unless-stopped
+
+  echo2:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo2", "-listen=:8002"]
+    ports:
+      - "8092:8002"
+    networks:
+      - infra
+    restart: unless-stopped
+
+  echo3:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo3", "-listen=:8003"]
+    ports:
+      - "8093:8003"
+    networks:
+      - infra
+    restart: unless-stopped
+
+networks:
+  infra:
+    external: true

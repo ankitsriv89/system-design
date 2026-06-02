@@ -171,6 +171,17 @@ Every project must have an interactive web UI served at `GET /`. Rules:
 - Static web assets committed under `web/data/` are excluded by `.gitignore`'s `**/data/` rule — add an `!**/web/data/` exception if needed.
 - Reference design: project 02 (`url-shortener/web/`) — two-column layout, left control panel, right dark-background output `<pre>`.
 
+#### Tutorial UI — mandatory for every project
+Every project UI must double as a visual tutorial that teaches the system design concept it implements. Requirements:
+
+- **Concept explanation panel**: a dedicated section (collapsible or always-visible) that explains the core concept in plain language — what problem it solves, why it matters, and how the implementation works. Written for a technical reader who hasn't seen the design before.
+- **Animated / live visualizations**: use CSS animations and Canvas/SVG drawn with vanilla JS to show the system operating in real time. Examples: animated request flow arrows between client and backends, ring diagrams for consistent hashing, token-bucket fill/drain animations for rate limiting, node status transitions for health checks. Animations must reflect actual live API state — not canned demos.
+- **Algorithm walk-through**: for each major algorithm or data structure used (e.g. round-robin pointer, virtual nodes, token bucket), show a step-by-step visual of one operation updating alongside a live request.
+- **Failure / edge-case demos**: interactive controls to trigger failure modes (kill a backend, exhaust tokens, create a hot key) so the viewer can watch the system respond visually.
+- **No static screenshots or placeholder text**: every diagram and animation must be driven by real fetch calls to the running service.
+- **Layout**: three-panel preferred — left: controls + concept text; center: live animated visualization; right: structured API output log. Collapse gracefully to single-column on narrow viewports.
+- The tutorial UI is held to the same XSS and vanilla-JS rules as the rest of the frontend.
+
 ### Source file comments
 - Every `.go` file must have a `// Package <name> ...` comment.
 - No comments explaining *what* the code does — only *why* when non-obvious (hidden constraint, subtle invariant, workaround).
