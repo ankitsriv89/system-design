@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"net/http"
@@ -34,6 +35,18 @@ func main() {
 	redisAddr := envOr("REDIS_ADDR", "redis:6379")
 	redisPass := envOr("REDIS_PASSWORD", "")
 	adminToken := envOr("ADMIN_TOKEN", "")
+	if adminToken == "" {
+		// Auto-generate a token so the admin plane is never open by default.
+		// Log it once so the operator can copy it; on production deployments
+		// ADMIN_TOKEN should be set explicitly in the environment.
+		var b [16]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			log.Fatal("generate admin token", zap.Error(err))
+		}
+		adminToken = hex.EncodeToString(b[:])
+		log.Warn("ADMIN_TOKEN not set — generated ephemeral token (set ADMIN_TOKEN env var to make it persistent)",
+			zap.String("admin_token", adminToken))
+	}
 
 	// Storage layer
 	pg, err := store.NewPG(dbURL)
@@ -72,9 +85,8 @@ func main() {
 
 	// ---- Admin (control plane) ----
 	adminMux := mux.NewRouter()
-	if adminToken != "" {
-		adminMux.Use(tokenAuthMiddleware(adminToken))
-	}
+	// tokenAuthMiddleware is always installed; adminToken is guaranteed non-empty above.
+	adminMux.Use(tokenAuthMiddleware(adminToken))
 	h.RegisterAdmin(adminMux)
 	adminMux.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	// Serve the web UI on admin port so operators can reach it directly.
@@ -163,7 +175,9 @@ func tokenAuthMiddleware(token string) mux.MiddlewareFunc {
 				return
 			}
 			auth := r.Header.Get("Authorization")
-			if auth != "Bearer "+token {
+			expected := "Bearer " + token
+			// Use constant-time comparison to prevent timing-based token enumeration.
+			if subtle.ConstantTimeCompare([]byte(auth), []byte(expected)) != 1 {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				_, _ = w.Write([]byte(`{"error":"unauthorized"}`))
