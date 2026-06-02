@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Gateway — System Design</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div class="shell">
+
+  <!-- LEFT: Controls + Concept -->
+  <aside class="panel-left">
+    <h1 class="logo">API Gateway</h1>
+    <p class="tagline">Project 07 · System Design Series</p>
+
+    <details class="concept" open>
+      <summary>What is an API Gateway?</summary>
+      <p>An API gateway is the single entry point for all client traffic into a microservices backend. Instead of exposing every service directly, the gateway handles cross-cutting concerns at the edge:</p>
+      <ul>
+        <li><strong>Routing</strong> — maps URL prefixes to upstream services</li>
+        <li><strong>Authentication</strong> — validates API keys before requests reach services</li>
+        <li><strong>Rate limiting</strong> — enforces per-key quotas using a sliding window in Redis</li>
+        <li><strong>Observability</strong> — emits latency metrics, structured logs, and decision traces</li>
+      </ul>
+      <p>The gateway separates into two planes: the <em>data plane</em> (proxy on :8088) handles millions of requests per second; the <em>control plane</em> (admin on :8089) manages config changes that reload the route table in &lt;1 ms.</p>
+    </details>
+
+    <section class="controls">
+      <h2>Admin Endpoints</h2>
+      <label>Admin URL <input id="adminUrl" type="text" value="http://localhost:8089"></label>
+      <label>Admin Token <input id="adminToken" type="text" placeholder="(leave blank if none)"></label>
+
+      <h3>Create Route</h3>
+      <label>Route ID <input id="routeId" type="text" value="users-svc" placeholder="users-svc"></label>
+      <label>Path Prefix <input id="routePath" type="text" value="/api/users" placeholder="/api/users"></label>
+      <label>Upstream <input id="routeUpstream" type="text" value="http://echo-a:9001" placeholder="http://echo-a:9001"></label>
+      <label class="row"><input id="routeAuth" type="checkbox"> Require Auth</label>
+      <label>Required Scope <input id="routeScope" type="text" placeholder="read (optional)"></label>
+      <label class="row"><input id="routeStrip" type="checkbox"> Strip prefix</label>
+      <label class="row"><input id="routeActive" type="checkbox" checked> Active</label>
+      <button id="btnUpsertRoute">Create / Update Route</button>
+
+      <h3>Create API Key</h3>
+      <label>Owner <input id="keyOwner" type="text" value="alice" placeholder="alice"></label>
+      <label>Raw Key <input id="keyRaw" type="text" value="secret-token-alice" placeholder="secret-token-alice"></label>
+      <label>Scopes <input id="keyScopes" type="text" value="read,write" placeholder="read,write"></label>
+      <label>Quota / min <input id="keyQuota" type="number" value="20" min="0"></label>
+      <button id="btnCreateKey">Create API Key</button>
+
+      <h3>Test Request</h3>
+      <label>Proxy URL <input id="proxyUrl" type="text" value="http://localhost:8088"></label>
+      <label>Path <input id="reqPath" type="text" value="/api/users/42" placeholder="/api/users/42"></label>
+      <label>API Key (Bearer) <input id="reqKey" type="text" placeholder="secret-token-alice"></label>
+      <button id="btnSendRequest" class="btn-accent">Send Proxy Request</button>
+
+      <h3>Load Test</h3>
+      <label>Requests <input id="loadN" type="number" value="30" min="1" max="200"></label>
+      <label>Concurrency <input id="loadConcurrency" type="number" value="5" min="1" max="20"></label>
+      <button id="btnLoadTest" class="btn-accent">Run Load Test</button>
+    </section>
+  </aside>
+
+  <!-- CENTER: Live Visualization -->
+  <main class="panel-center">
+    <h2>Live Gateway Visualization</h2>
+    <canvas id="gatewayCanvas" width="640" height="480"></canvas>
+
+    <div class="legend">
+      <span class="dot green"></span> allowed
+      <span class="dot red"></span> blocked
+      <span class="dot yellow"></span> in-flight
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat"><span id="statTotal">0</span><label>total</label></div>
+      <div class="stat"><span id="statAllowed">0</span><label>allowed</label></div>
+      <div class="stat"><span id="statBlocked">0</span><label>blocked</label></div>
+      <div class="stat"><span id="statAvgMs">—</span><label>avg ms</label></div>
+    </div>
+
+    <section class="route-table">
+      <h3>Active Routes <button id="btnRefreshRoutes" class="btn-sm">↺ Refresh</button></h3>
+      <table id="routeTable">
+        <thead><tr><th>ID</th><th>Prefix</th><th>Upstream</th><th>Auth</th><th>Scope</th><th>Active</th></tr></thead>
+        <tbody id="routeTableBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <!-- RIGHT: API Output Log -->
+  <aside class="panel-right">
+    <h2>Request Log <button id="btnClearLog" class="btn-sm">clear</button></h2>
+    <pre id="outputLog" class="output-log"></pre>
+  </aside>
+
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

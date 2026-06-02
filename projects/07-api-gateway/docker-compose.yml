@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build: .
+    image: 07-api-gateway:latest
+    ports:
+      - "127.0.0.1:8088:8088"   # proxy / data plane (Caddy terminates TLS)
+      - "127.0.0.1:8089:8089"   # admin / control plane (loopback only)
+    environment:
+      ADDR: ":8088"
+      ADMIN_ADDR: ":8089"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+      DATABASE_URL: "postgres://gw:gw@postgres:5432/apigateway?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-}"
+    networks:
+      - infra
+    restart: unless-stopped
+
+  # Lightweight echo backends used by the demo UI and seed script.
+  echo-a:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo-a: users service", "-listen=:9001"]
+    networks:
+      - infra
+    restart: unless-stopped
+
+  echo-b:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo-b: orders service", "-listen=:9002"]
+    networks:
+      - infra
+    restart: unless-stopped
+
+  echo-c:
+    image: hashicorp/http-echo:latest
+    command: ["-text=echo-c: admin service (auth required)", "-listen=:9003"]
+    networks:
+      - infra
+    restart: unless-stopped
+
+networks:
+  infra:
+    external: true
