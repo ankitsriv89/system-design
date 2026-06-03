@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Crawler — System Design #12</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <span class="badge">12</span>
+    <h1>Web Crawler</h1>
+    <span class="subtitle">Frontier · Politeness · Dedup · Content Extraction</span>
+  </div>
+</header>
+
+<main class="three-col">
+
+  <!-- ─── LEFT: Controls + Concept ─── -->
+  <aside class="panel panel-left">
+
+    <section class="card">
+      <h2>Submit Crawl Job</h2>
+      <label>Seed URL
+        <input id="seedUrl" type="url" value="https://example.com" placeholder="https://example.com">
+      </label>
+      <label>Max Depth
+        <input id="maxDepth" type="number" value="2" min="1" max="5">
+      </label>
+      <button id="btnSubmit" class="btn-primary">Start Crawl</button>
+    </section>
+
+    <section class="card">
+      <h2>Enqueue Single URL</h2>
+      <label>URL
+        <input id="enqUrl" type="url" value="https://example.com/page" placeholder="https://…">
+      </label>
+      <label>Priority
+        <input id="enqPriority" type="number" value="5" min="1" max="10">
+      </label>
+      <button id="btnEnqueue" class="btn-secondary">Enqueue</button>
+    </section>
+
+    <section class="card concept">
+      <h2>How a Web Crawler Works</h2>
+      <details open>
+        <summary>The Problem</summary>
+        <p>A web crawler must visit billions of pages without hammering any single server, without revisiting the same page twice, and without storing infinite duplicate content. Three hard problems: <strong>frontier scheduling</strong>, <strong>politeness</strong>, and <strong>deduplication</strong>.</p>
+      </details>
+      <details>
+        <summary>Frontier Queue</summary>
+        <p>The frontier is a priority queue of unseen URLs. This implementation uses a <strong>PostgreSQL table</strong> with <code>SELECT FOR UPDATE SKIP LOCKED</code> so multiple workers can pull work concurrently without contention. URLs are scored by priority and <code>next_fetch_at</code>.</p>
+      </details>
+      <details>
+        <summary>Politeness &amp; robots.txt</summary>
+        <p>Before fetching any URL the worker checks a <strong>per-host robots.txt rule</strong> cached in Redis (24h TTL). If the path is disallowed it's skipped. Between requests to the same host the worker sleeps for <code>crawl-delay</code> (or 1s default). This prevents overloading any single origin.</p>
+      </details>
+      <details>
+        <summary>Deduplication</summary>
+        <p>Each URL is hashed (SHA-256) and checked against a <strong>Redis SET</strong> before any work is done. After a successful fetch the hash is added. Identical content from different URLs is detected via a <strong>content hash</strong> stored in PostgreSQL.</p>
+      </details>
+      <details>
+        <summary>Scale Path</summary>
+        <p>MVP: 3 goroutine workers, single Postgres + Redis. Production: partition the frontier by host hash across worker shards; replace the Redis SET with a distributed Bloom filter; push discovered URLs through a message bus (Kafka) so fetching and parsing are independently scaled.</p>
+      </details>
+    </section>
+
+  </aside>
+
+  <!-- ─── CENTER: Live Animation ─── -->
+  <section class="panel panel-center">
+    <div class="viz-header">
+      <h2>Live System Visualization</h2>
+      <div class="stats-row" id="statsRow">
+        <span class="stat"><span class="stat-val" id="statPending">—</span><span class="stat-lbl">pending</span></span>
+        <span class="stat"><span class="stat-val" id="statFetching">—</span><span class="stat-lbl">fetching</span></span>
+        <span class="stat"><span class="stat-val" id="statDone">—</span><span class="stat-lbl">done</span></span>
+        <span class="stat"><span class="stat-val" id="statFailed">—</span><span class="stat-lbl">failed</span></span>
+        <span class="stat"><span class="stat-val" id="statSeen">—</span><span class="stat-lbl">seen (redis)</span></span>
+      </div>
+    </div>
+
+    <canvas id="vizCanvas" width="560" height="340"></canvas>
+
+    <div class="algo-walk">
+      <h3>Algorithm Step-Through</h3>
+      <ol id="algoSteps">
+        <li class="step">Worker claims up to 5 URLs with <code>SELECT … FOR UPDATE SKIP LOCKED</code></li>
+        <li class="step">Check Redis SET for URL hash → skip if seen</li>
+        <li class="step">Fetch <code>robots.txt</code> for host (cache-first, 24h TTL)</li>
+        <li class="step">Check path against Disallow rules → skip if disallowed</li>
+        <li class="step">Sleep crawl-delay (default 1s) for host politeness</li>
+        <li class="step">HTTP GET with 15s timeout, 2MB body cap, 5 redirect limit</li>
+        <li class="step">Compute SHA-256 of body → detect duplicate content</li>
+        <li class="step">Extract <code>&lt;a href&gt;</code> links, normalise, enqueue unseen ones</li>
+        <li class="step">Mark URL done in frontier; add hash to Redis seen-set</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ─── RIGHT: API Output Log ─── -->
+  <section class="panel panel-right">
+    <div class="log-header">
+      <h2>API Output</h2>
+      <button id="btnClear" class="btn-ghost">Clear</button>
+      <button id="btnRefreshPages" class="btn-ghost">↻ Refresh Pages</button>
+    </div>
+    <pre id="apiLog" class="api-log"></pre>
+
+    <h3>Recent Crawled Pages</h3>
+    <div id="pagesList" class="pages-list"></div>
+
+    <h3>Crawl Jobs</h3>
+    <div id="jobsList" class="jobs-list"></div>
+  </section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

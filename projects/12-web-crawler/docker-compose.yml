@@ -1,0 +1,25 @@
+version: "3.9"
+
+networks:
+  infra:
+    external: true
+
+services:
+  crawler:
+    build: .
+    image: 12-web-crawler:latest
+    restart: unless-stopped
+    ports:
+      - "8093:8093"
+    environment:
+      DATABASE_URL: postgres://crawler:crawler@infra-postgres-1:5432/crawler?sslmode=disable
+      REDIS_ADDR: infra-redis-1:6379
+      LISTEN_ADDR: :8093
+      NUM_WORKERS: "3"
+    networks:
+      - infra
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8093/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
