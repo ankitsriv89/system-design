@@ -18,7 +18,7 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | 8089 | [08-basic-key-value-store](../projects/08-basic-key-value-store/) | `/p08/` | ✅ built | |
 | **Reserved — not yet built** | | | | |
 | 8090 | [09-caching-system](../projects/09-caching-system/) | `/p09/` | ✅ built | |
-| 8091 | 10-notification-system | `/p10/` | 🔲 planned | |
+| 8091 | [10-notification-system](../projects/10-notification-system/) | `/p10/` | ✅ built | |
 | 8092 | 11-typeahead-autocomplete-system | `/p11/` | 🔲 planned | |
 | 8093 | 12-web-crawler | `/p12/` | 🔲 planned | |
 | 8094 | 13-message-queue | `/p13/` | 🔲 planned | |

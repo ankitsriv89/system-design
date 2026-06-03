@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>10 — Notification System</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header>
+  <h1>Notification System</h1>
+  <span class="tag">Fanout · Templates · Retry/DLQ · Preferences · Go</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left: Controls ── -->
+  <div class="panel">
+    <div class="panel-title">Controls</div>
+
+    <details class="concept" open>
+      <summary>How it works</summary>
+      <p>A notification system decouples message <strong>acceptance</strong> from <strong>delivery</strong>. The API accepts a request synchronously, persists it, and enqueues a job. An async worker pool dispatches jobs to channel providers (email, SMS, push) with:</p>
+      <ul>
+        <li><strong>Template rendering</strong> — named templates with <code>{{.Key}}</code> placeholders</li>
+        <li><strong>Preference checks</strong> — per-user opt-in/out and quiet hours (no sends during sleep)</li>
+        <li><strong>Retry with backoff</strong> — up to 3 attempts with exponential delay (200 ms → 400 ms → 800 ms)</li>
+        <li><strong>Dead-letter queue (DLQ)</strong> — exhausted retries land here; persisted to DB</li>
+        <li><strong>Idempotency keys</strong> — duplicate requests with the same key are coalesced</li>
+      </ul>
+      <p>Watch particles travel through the pipeline on the canvas. Increase a provider's failure rate to trigger retries and DLQ events live.</p>
+    </details>
+
+    <div class="section">
+      <div class="section-label">Send Notification</div>
+      <input type="text" id="user-id" placeholder="user_id (e.g. demo-user-1)">
+      <select id="channel">
+        <option value="email">email</option>
+        <option value="sms">sms</option>
+        <option value="push">push</option>
+      </select>
+      <select id="template-id">
+        <option value="">— no template (use subject/body) —</option>
+      </select>
+      <input type="text" id="params" placeholder='Template params JSON: {"Name":"Alice","Code":"1234"}'>
+      <select id="priority">
+        <option value="1">Priority: normal</option>
+        <option value="2">Priority: high</option>
+        <option value="0">Priority: low</option>
+      </select>
+      <input type="text" id="ikey" placeholder="Idempotency key (optional)">
+      <button class="btn btn-primary" id="send-btn">Send Notification</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Bulk Fire</div>
+      <input type="number" id="bulk-count" value="10" min="1" max="100">
+      <button class="btn btn-warning" id="bulk-btn">Fire Bulk Notifications</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Seed Demo Data</div>
+      <button class="btn btn-success" id="seed-btn">Seed Templates + Preferences</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Create Template</div>
+      <input type="text" id="tmpl-id" placeholder="Template ID (e.g. welcome)">
+      <select id="tmpl-channel">
+        <option value="email">email</option>
+        <option value="sms">sms</option>
+        <option value="push">push</option>
+      </select>
+      <input type="text" id="tmpl-subject" placeholder="Subject ({{.Name}} placeholders OK)">
+      <textarea id="tmpl-body" placeholder="Body — use {{.Key}} placeholders"></textarea>
+      <button class="btn btn-purple" id="create-tmpl-btn">Save Template</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">User Preferences</div>
+      <input type="text" id="pref-user" placeholder="user_id">
+      <label style="font-size:0.78rem; display:flex; gap:8px; margin-bottom:6px;">
+        <input type="checkbox" id="pref-email" checked> Email
+        <input type="checkbox" id="pref-sms" checked> SMS
+        <input type="checkbox" id="pref-push" checked> Push
+      </label>
+      <label style="font-size:0.78rem;">Quiet hours</label>
+      <div style="display:flex; gap:8px;">
+        <input type="number" id="quiet-start" value="-1" min="-1" max="23" style="width:50%;" placeholder="start hr (-1=off)">
+        <input type="number" id="quiet-end"   value="-1" min="-1" max="23" style="width:50%;" placeholder="end hr">
+      </div>
+      <button class="btn btn-primary" id="pref-btn" style="margin-top:6px;">Save Preferences</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Provider Failure Rates (failure injection)</div>
+      <div class="slider-row">
+        <label>Email</label>
+        <input type="range" id="fr-email" min="0" max="1" step="0.05" value="0.1">
+        <span class="val" id="fr-email-val">10%</span>
+      </div>
+      <div class="slider-row">
+        <label>SMS</label>
+        <input type="range" id="fr-sms" min="0" max="1" step="0.05" value="0.15">
+        <span class="val" id="fr-sms-val">15%</span>
+      </div>
+      <div class="slider-row">
+        <label>Push</label>
+        <input type="range" id="fr-push" min="0" max="1" step="0.05" value="0.05">
+        <span class="val" id="fr-push-val">5%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Center: Live visualization ── -->
+  <div class="viz-area">
+    <canvas id="pipeline-canvas"></canvas>
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="num blue"  id="stat-enqueued">0</div>
+        <div class="lbl">Enqueued</div>
+      </div>
+      <div class="stat-cell">
+        <div class="num green" id="stat-delivered">0</div>
+        <div class="lbl">Delivered</div>
+      </div>
+      <div class="stat-cell">
+        <div class="num red"   id="stat-failed">0</div>
+        <div class="lbl">Failed</div>
+      </div>
+      <div class="stat-cell">
+        <div class="num orange" id="stat-qdepth">0</div>
+        <div class="lbl">Queue Depth</div>
+      </div>
+      <div class="stat-cell">
+        <div class="num purple" id="stat-dlqdepth">0</div>
+        <div class="lbl">DLQ Depth</div>
+      </div>
+    </div>
+    <!-- Recent notifications table below canvas -->
+    <div style="padding:14px; overflow-y:auto; max-height:220px; border-top:1px solid #2a2f3e;">
+      <div class="panel-title" style="margin-bottom:8px;">Recent Notifications</div>
+      <table class="notif-list">
+        <thead>
+          <tr><th>ID</th><th>User</th><th>Channel</th><th>Status</th></tr>
+        </thead>
+        <tbody id="notif-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Right: Event log ── -->
+  <div class="panel log-panel">
+    <div class="log-header">
+      <div class="panel-title">Event Log</div>
+      <button class="btn-sm" id="clear-log">Clear</button>
+    </div>
+    <div class="log-scroll" id="log-scroll"></div>
+  </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

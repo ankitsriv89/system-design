@@ -1,0 +1,35 @@
+services:
+  notification-system:
+    build: .
+    image: 10-notification-system:latest
+    container_name: notification-system
+    restart: unless-stopped
+    ports:
+      - "8091:8091"
+    environment:
+      LISTEN_ADDR: :8091
+      DATABASE_URL: postgres://notif:notif@postgres:5432/notifications?sslmode=disable
+    networks:
+      - infra
+    depends_on:
+      - postgres-wait
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8091/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # One-shot container that waits for shared postgres to be ready before the app starts.
+  postgres-wait:
+    image: alpine:3.19
+    command: >
+      sh -c "
+        apk add --no-cache postgresql-client &&
+        until pg_isready -h postgres -p 5432 -U notif; do sleep 1; done
+      "
+    networks:
+      - infra
+
+networks:
+  infra:
+    external: true
