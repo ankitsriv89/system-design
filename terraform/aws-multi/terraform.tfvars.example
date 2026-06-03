@@ -1,0 +1,11 @@
+# =============================================================================
+# terraform/aws-multi/terraform.tfvars.example
+# Copy to terraform.tfvars and fill in — never commit terraform.tfvars
+# =============================================================================
+
+aws_region = "ap-south-1"
+az_suffix  = "c"
+
+# ssh_public_key = "ssh-ed25519 AAAA... you@host"
+# ssh_allowed_cidr = "1.2.3.4/32"   # restrict to your home IP
+# github_token = ""                  # only needed for private repo

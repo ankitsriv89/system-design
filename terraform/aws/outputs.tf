@@ -14,9 +14,8 @@ output "instance_summary" {
     instance_type = var.instance_type
     region        = var.aws_region
     az            = "${var.aws_region}${var.availability_zone_suffix}"
-    arch          = "arm64 (Graviton2)"
-    vcpu          = 2
-    ram_gb        = 8
+    arch          = "arm64 (Graviton2/Graviton3)"
+    note          = "t4g.xlarge=4vCPU/16GB (default, all 50 projects); t4g.large=2vCPU/8GB (partial)"
     ami_id        = data.aws_ami.ubuntu_arm64.id
     ami_name      = data.aws_ami.ubuntu_arm64.name
   }
@@ -52,11 +51,13 @@ output "access" {
     ssh_command    = "ssh -i ~/.ssh/id_ed25519 ubuntu@${aws_eip.main.public_ip}"
     grafana_url    = "http://${aws_eip.main.public_ip}:3000"
     prometheus_url = "http://${aws_eip.main.public_ip}:9090"
-    services = {
-      "01-rate-limiter"  = "http://${aws_eip.main.public_ip}:8081"
-      "02-url-shortener" = "http://${aws_eip.main.public_ip}:8085"
-      "03-pastebin"      = "http://${aws_eip.main.public_ip}:8082"
-      "04-unique-id-gen" = "http://${aws_eip.main.public_ip}:8083"
+    services_sample = {
+      "01-rate-limiter"       = "http://${aws_eip.main.public_ip}:8081"
+      "02-url-shortener"      = "http://${aws_eip.main.public_ip}:8085"
+      "03-pastebin"           = "http://${aws_eip.main.public_ip}:8082"
+      "04-unique-id-gen"      = "http://${aws_eip.main.public_ip}:8083"
+      "10-notification-sys"   = "http://${aws_eip.main.public_ip}:8091"
+      "note"                  = "full port list in infra/ports.md (8081-8131)"
     }
   }
 }

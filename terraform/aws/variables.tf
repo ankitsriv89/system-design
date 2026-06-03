@@ -17,15 +17,15 @@ variable "availability_zone_suffix" {
 }
 
 variable "instance_type" {
-  description = "EC2 instance type. t4g.large = 2 vCPU / 8 GB ARM64, ~$0.015/hr Spot."
+  description = "EC2 instance type. t4g.xlarge = 4 vCPU / 16 GB ARM64, ~$0.030/hr Spot. Use t4g.large (8 GB) for partial deploys."
   type        = string
-  default     = "t4g.large"
+  default     = "t4g.xlarge"
 }
 
 variable "spot_price_max" {
   description = "Maximum Spot bid price ($/hr). Set to on-demand price as ceiling so it never exceeds that."
   type        = string
-  default     = "0.0448" # t4g.large on-demand in ap-south-1
+  default     = "0.0896" # t4g.xlarge on-demand in ap-south-1 (~2x t4g.large)
 }
 
 variable "project_name" {

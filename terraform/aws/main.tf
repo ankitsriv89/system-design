@@ -138,11 +138,11 @@ resource "aws_security_group" "main" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # App service ports (projects 01–10)
+  # App service ports — all 50 projects (p01=8081 … p50=8131)
   ingress {
-    description = "App ports"
+    description = "App ports p01-p50"
     from_port   = 8081
-    to_port     = 8090
+    to_port     = 8131
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
