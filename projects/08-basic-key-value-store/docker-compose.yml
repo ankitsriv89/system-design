@@ -1,0 +1,27 @@
+services:
+  kvstore:
+    build: .
+    image: 08-basic-key-value-store:latest
+    container_name: kvstore
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      DATA_DIR: /data/kvstore
+      LISTEN_ADDR: :8088
+    volumes:
+      - kvstore_data:/data/kvstore
+    networks:
+      - infra
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kvstore_data:
+
+networks:
+  infra:
+    external: true

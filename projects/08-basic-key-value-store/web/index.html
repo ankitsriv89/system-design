@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>08 · Basic Key-Value Store</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<header>
+  <h1>Basic Key-Value Store</h1>
+  <span class="tag">LSM-tree · WAL · SSTable · Compaction</span>
+  <div class="status-dot" id="health-dot"></div>
+  <span class="status-label" id="health-label">connecting…</span>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left panel ──────────────────────────────────────── -->
+  <div class="left-panel">
+
+    <div class="section">
+      <div class="section-title">KV Operations</div>
+      <div class="field">
+        <label>Key</label>
+        <input type="text" id="kv-key" placeholder="my-key" spellcheck="false">
+      </div>
+      <div class="field">
+        <label>Value (PUT only)</label>
+        <textarea id="kv-val" placeholder="my value…"></textarea>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-set">SET</button>
+        <button class="btn btn-ghost"   id="btn-get">GET</button>
+        <button class="btn btn-danger"  id="btn-del">DELETE</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Admin</div>
+      <div class="btn-row">
+        <button class="btn btn-purple" id="btn-compact">Compact Now</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Live Stats</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="label">Writes</div>
+          <div class="value" id="stat-writes">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Reads</div>
+          <div class="value" id="stat-reads">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Deletes</div>
+          <div class="value" id="stat-deletes">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Flushes</div>
+          <div class="value" id="stat-flushes">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Compactions</div>
+          <div class="value" id="stat-compact">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">SST Files</div>
+          <div class="value" id="stat-sstcount">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Memtable</div>
+          <div class="value" id="stat-mem">–</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">WAL Entries</div>
+          <div class="value" id="stat-walent">–</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Load &amp; Failure Tests</div>
+      <div class="btn-row">
+        <button class="btn btn-warn" id="load-btn">Load 200 Keys</button>
+        <button class="btn btn-danger" id="btn-stress-del">Delete 50 Keys</button>
+      </div>
+      <div class="load-bar-wrap">
+        <div class="load-bar" id="load-bar"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <details open>
+        <summary>How it works — LSM-tree</summary>
+        <div class="concept-body" style="margin-top:8px">
+          <p>An <strong>LSM-tree</strong> (Log-Structured Merge-tree) optimises for write throughput
+          by never doing random I/O. Every write is sequential.</p>
+
+          <h3>1. Write path</h3>
+          <p>A write is appended to the <span class="pill">WAL</span> (Write-Ahead Log) and fsynced.
+          The WAL is the durability guarantee — if the process crashes the write survives.
+          The key is then inserted into the in-memory <span class="pill">memtable</span>
+          (a sorted hashmap). The call returns immediately after the fsync.</p>
+
+          <h3>2. Flush to SSTable</h3>
+          <p>When the memtable exceeds 4 MiB it is frozen and written sequentially to a new
+          <span class="pill">SSTable</span> (Sorted String Table) on disk at Level 0.
+          SSTables are <em>immutable</em> — they are never modified in place.</p>
+
+          <h3>3. Compaction</h3>
+          <p>Over time many L0 SSTables accumulate. A background job merges them into one
+          larger <span class="pill">L1</span> file, resolving duplicates (newest wins) and
+          dropping tombstones. This reduces read amplification and reclaims space.</p>
+
+          <h3>4. Read path</h3>
+          <p>A read checks the memtable first, then scans SSTables newest-first until the key
+          is found or all files are exhausted. A tombstone record signals deletion.</p>
+
+          <h3>Why LSM over B-tree?</h3>
+          <p>B-trees do random I/O on every write (page split, COW). LSM turns all writes into
+          sequential appends, giving 10–100× better write throughput on spinning disks and
+          significant gains on SSDs. The trade-off is higher read amplification and the
+          compaction overhead.</p>
+        </div>
+      </details>
+    </div>
+
+  </div>
+
+  <!-- ── Centre panel ────────────────────────────────────── -->
+  <div class="center-panel">
+    <h2>Live LSM-tree Visualization</h2>
+    <canvas id="viz-canvas"></canvas>
+  </div>
+
+  <!-- ── Right panel ────────────────────────────────────── -->
+  <div class="right-panel">
+    <div class="panel-header">
+      Operation Log
+      <button id="btn-clear-log">clear</button>
+    </div>
+    <div id="log"></div>
+    <div id="walkthrough">
+      Run any operation to see a step-by-step explanation here.
+    </div>
+  </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
