@@ -26,7 +26,7 @@ func main() {
 	defer log.Sync()
 
 	dataDir := envOr("DATA_DIR", "/data/kvstore")
-	addr := envOr("LISTEN_ADDR", ":8088")
+	addr := envOr("LISTEN_ADDR", ":8089")
 
 	engine, err := store.Open(dataDir, log)
 	if err != nil {

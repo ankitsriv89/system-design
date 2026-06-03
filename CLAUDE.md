@@ -122,9 +122,27 @@ After `go build ./...`, `go vet ./...`, and `go test -race ./...` all pass, prod
 - Request and response field descriptions.
 - All error responses with HTTP status codes and bodies.
 
+### 6. Update deployment infrastructure (mandatory for every new project)
+
+After the project passes build + test and before committing, update these three files:
+
+**`infra/ports.md`**
+- Mark the project's row as `✅ built` (status column).
+- If you introduced a new port not already in the table, add a row for it.
+- Resolve any port conflicts before committing — check `docker-compose.yml` ports against the table.
+
+**`infra/caddy/Caddyfile`**
+- Add a `handle_path /pNN/*` block pointing at the project's actual port (from its `docker-compose.yml`).
+- Update the default index page HTML to include the new project link with its tech-stack tag line.
+- Keep routes in project-number order.
+
+**Port conflict rule**
+- Before assigning a port in a new project's `docker-compose.yml`, look up the next free port in `infra/ports.md`.
+- Never reuse a port already taken by another project. The `LISTEN_ADDR` env var default in `main.go` must match the `docker-compose.yml` port.
+
 ### Commit and push
-After all docs are written:
-1. `git add` only project files — never `.env`, `*.secret`, or binaries.
+After all docs and infra files are updated:
+1. `git add` only project files plus `infra/ports.md` and `infra/caddy/Caddyfile` — never `.env`, `*.secret`, or binaries.
 2. Commit message: `feat(<project-slug>): initial implementation + docs`
    - For changes spanning multiple projects: `feat(03-pastebin, 04-unique-id-generator): <short description>`
 3. `git push origin main`
@@ -137,14 +155,19 @@ For a bug fix: `fix(<project-slug>): <short description>`
 ## Project conventions
 
 ### Ports (do not reuse)
-| Project | Port |
-|---|---|
-| 01-rate-limiter | 8081 |
-| 02-url-shortener | 8085 |
-| 03-pastebin | 8082 |
-| 04-unique-id-generator | 8083 |
-| 05-consistent-hashing | 8084 |
-| 06 onwards | 8086, 8087 … |
+The authoritative port registry is `infra/ports.md`. Always check it before assigning a port.
+
+| Project | Port(s) | Caddy path |
+|---|---|---|
+| 01-rate-limiter | 8081 | /p01/ |
+| 02-url-shortener | 8085 | /p02/ |
+| 03-pastebin | 8082 | /p03/ |
+| 04-unique-id-generator | 8083 | /p04/ |
+| 05-consistent-hashing | 8084 | /p05/ |
+| 06-load-balancer | 8086 (proxy), 8087 (admin) | /p06/ |
+| 07-api-gateway | 8088 | /p07/ |
+| 08-basic-key-value-store | 8089 | /p08/ |
+| 09 onwards | next free port above 8089 — check infra/ports.md | /p09/ … |
 
 ### Naming
 - Module path: `github.com/ankitsriv89/<project-slug>`

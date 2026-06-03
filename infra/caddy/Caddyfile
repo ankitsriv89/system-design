@@ -33,14 +33,14 @@
         respond "ok" 200
     }
 
-    # ── Project 01 — Rate Limiter (:8080) ─────────────────────────────────────
+    # ── Project 01 — Rate Limiter (:8081) ─────────────────────────────────────
     handle_path /p01/* {
-        reverse_proxy localhost:8080
+        reverse_proxy localhost:8081
     }
 
-    # ── Project 02 — URL Shortener (:8081) ────────────────────────────────────
+    # ── Project 02 — URL Shortener (:8085) ────────────────────────────────────
     handle_path /p02/* {
-        reverse_proxy localhost:8081
+        reverse_proxy localhost:8085
     }
 
     # ── Project 03 — Pastebin (:8082) ─────────────────────────────────────────
@@ -58,23 +58,66 @@
         reverse_proxy localhost:8084
     }
 
+    # ── Project 06 — Load Balancer (:8086) ────────────────────────────────────
+    handle_path /p06/* {
+        reverse_proxy localhost:8086
+    }
+
+    # ── Project 07 — API Gateway (:8088) ──────────────────────────────────────
+    handle_path /p07/* {
+        reverse_proxy localhost:8088
+    }
+
+    # ── Project 08 — Basic Key-Value Store (:8089) ────────────────────────────
+    handle_path /p08/* {
+        reverse_proxy localhost:8089
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
-    #       reverse_proxy localhost:80NN
+    #       reverse_proxy localhost:<actual-port>
     #   }
+    # Check infra/ports.md for the correct port before adding.
 
     # ── Default: index of running projects ────────────────────────────────────
     handle {
         respond `
-<!doctype html><html><head><title>System Design Projects</title>
-<style>body{font-family:monospace;max-width:600px;margin:40px auto;padding:0 20px}
-a{display:block;margin:8px 0;color:#0af}</style></head><body>
-<h2>System Design — Running Projects</h2>
-<a href="/p01/">[01] Rate Limiter</a>
-<a href="/p02/">[02] URL Shortener</a>
-<p style="color:#888;margin-top:40px">More projects deploy as they are built.</p>
-</body></html>` 200
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>System Design Projects</title>
+<style>
+  body { font-family: 'Segoe UI', system-ui, sans-serif; max-width: 700px; margin: 48px auto; padding: 0 24px; background: #0f1117; color: #e2e8f0; }
+  h1 { color: #4f9cf9; font-size: 22px; margin-bottom: 4px; }
+  p.sub { color: #64748b; font-size: 13px; margin-bottom: 32px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  a { display: block; background: #1a1d27; border: 1px solid #2d3047; border-radius: 8px; padding: 14px 16px; color: #e2e8f0; text-decoration: none; transition: border-color .2s; }
+  a:hover { border-color: #4f9cf9; }
+  a .num { color: #4f9cf9; font-weight: 700; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
+  a .name { font-size: 14px; font-weight: 600; }
+  a .tag { color: #64748b; font-size: 11px; margin-top: 4px; }
+  .coming { opacity: .4; cursor: default; }
+  footer { color: #334155; font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<h1>System Design Projects</h1>
+<p class="sub">50 production-quality implementations on one Oracle Cloud free-tier ARM VM.</p>
+<div class="grid">
+  <a href="/p01/"><div class="num">01</div><div class="name">Rate Limiter</div><div class="tag">Token bucket · Redis · Go</div></a>
+  <a href="/p02/"><div class="num">02</div><div class="name">URL Shortener</div><div class="tag">Base62 · Postgres · Go</div></a>
+  <a href="/p03/"><div class="num">03</div><div class="name">Pastebin</div><div class="tag">Object store · TTL · Go</div></a>
+  <a href="/p04/"><div class="num">04</div><div class="name">Unique ID Generator</div><div class="tag">Snowflake · 64-bit · Go</div></a>
+  <a href="/p05/"><div class="num">05</div><div class="name">Consistent Hashing</div><div class="tag">Virtual nodes · Ring · Go</div></a>
+  <a href="/p06/"><div class="num">06</div><div class="name">Load Balancer</div><div class="tag">Round-robin · Health checks · Go</div></a>
+  <a href="/p07/"><div class="num">07</div><div class="name">API Gateway</div><div class="tag">Rate limit · Auth · Routing · Go</div></a>
+  <a href="/p08/"><div class="num">08</div><div class="name">Basic Key-Value Store</div><div class="tag">LSM-tree · WAL · SSTable · Go</div></a>
+</div>
+<footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
+</body>
+</html>` 200
     }
 }
 

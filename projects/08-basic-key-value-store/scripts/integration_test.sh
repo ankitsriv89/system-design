@@ -3,7 +3,7 @@
 # Requires a running stack: docker compose up -d
 set -euo pipefail
 
-BASE="${BASE_URL:-http://localhost:8088}"
+BASE="${BASE_URL:-http://localhost:8089}"
 PASS=0; FAIL=0
 
 ok()   { echo "  ✓ $1"; PASS=$((PASS+1)); }

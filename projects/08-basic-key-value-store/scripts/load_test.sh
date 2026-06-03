@@ -3,7 +3,7 @@
 # Uses curl for portability; install hey or wrk for more accurate numbers.
 set -euo pipefail
 
-BASE="${BASE_URL:-http://localhost:8088}"
+BASE="${BASE_URL:-http://localhost:8089}"
 N="${N:-500}"
 
 echo "=== Load Test: $N sequential writes ==="

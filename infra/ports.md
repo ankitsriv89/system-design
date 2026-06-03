@@ -2,71 +2,75 @@
 
 Each project gets a fixed host port. This registry prevents conflicts across all 50 projects.
 
-| Port | Project | Caddy Path | Notes |
-|------|---------|------------|-------|
-| **Shared infra** | | | |
-| 5432 | postgres (shared) | — | localhost only, not exposed publicly |
-| **Projects** | | | |
-| 8080 | [01-rate-limiter](../projects/01-rate-limiter/) | `/p01/` | |
-| 8081 | [02-url-shortener](../projects/02-url-shortener/) | `/p02/` | |
-| 8082 | 03-pastebin | `/p03/` | |
-| 8083 | 04-unique-id-generator | `/p04/` | |
-| 8084 | 05-consistent-hashing | `/p05/` | |
-| 8085 | 06-load-balancer | `/p06/` | |
-| 8086 | 07-api-gateway | `/p07/` | |
-| 8087 | 08-basic-key-value-store | `/p08/` | |
-| 8088 | 09-caching-system | `/p09/` | |
-| 8089 | 10-notification-system | `/p10/` | |
-| 8090 | 11-typeahead-autocomplete-system | `/p11/` | |
-| 8091 | 12-web-crawler | `/p12/` | |
-| 8092 | 13-message-queue | `/p13/` | |
-| 8093 | 14-one-to-one-chat-system | `/p14/` | WebSocket |
-| 8094 | 15-group-chat-system | `/p15/` | WebSocket |
-| 8095 | 16-news-feed-system | `/p16/` | |
-| 8096 | 17-proximity-service | `/p17/` | |
-| 8097 | 18-instagram-photo-video-sharing-and-feed | `/p18/` | |
-| 8098 | 19-twitter-x-timeline-and-posts | `/p19/` | |
-| 8099 | 20-whatsapp-real-time-messaging | `/p20/` | WebSocket |
-| 8100 | 21-dropbox-file-storage-and-sync | `/p21/` | |
-| 8101 | 22-ticket-booking-system | `/p22/` | |
-| 8102 | 23-e-commerce-platform | `/p23/` | |
-| 8103 | 24-recommendation-system | `/p24/` | |
-| 8104 | 25-distributed-cache | `/p25/` | |
-| 8105 | 26-uber-ride-sharing-and-matching | `/p26/` | WebSocket |
-| 8106 | 27-netflix-video-streaming-platform | `/p27/` | |
-| 8107 | 28-youtube-video-upload-and-streaming | `/p28/` | |
-| 8108 | 29-tiktok-short-video-platform | `/p29/` | |
-| 8109 | 30-facebook-like-social-network-news-feed | `/p30/` | |
-| 8110 | 31-google-docs-real-time-collaborative-editing | `/p31/` | WebSocket |
-| 8111 | 32-content-delivery-network-cdn | `/p32/` | |
-| 8112 | 33-search-engine | `/p33/` | |
-| 8113 | 34-google-maps-routing-and-location-services | `/p34/` | |
-| 8114 | 35-distributed-database | `/p35/` | |
-| 8115 | 36-real-time-analytics-system | `/p36/` | |
-| 8116 | 37-ad-serving-and-tracking-system | `/p37/` | |
-| 8117 | 38-fraud-detection-system | `/p38/` | |
-| 8118 | 39-stock-trading-exchange-system | `/p39/` | WebSocket |
-| 8119 | 40-distributed-job-scheduler | `/p40/` | |
-| 8120 | 41-event-sourcing-and-cqrs-architecture | `/p41/` | |
-| 8121 | 42-multi-tenant-saas-platform | `/p42/` | |
-| 8122 | 43-live-video-streaming-at-scale | `/p43/` | WebSocket |
-| 8123 | 44-highly-scalable-nosql-database | `/p44/` | |
-| 8124 | 45-real-time-multiplayer-game-backend | `/p45/` | WebSocket |
-| 8125 | 46-ml-model-serving-infrastructure | `/p46/` | |
-| 8126 | 47-geo-distributed-low-latency-system | `/p47/` | |
-| 8127 | 48-strongly-consistent-global-database | `/p48/` | |
-| 8128 | 49-high-frequency-trading-platform | `/p49/` | WebSocket |
-| 8129 | 50-planet-scale-distributed-system | `/p50/` | |
-| **Monitoring** | | | |
-| 9091 | Prometheus (project 02) | — | Per-project instance |
-| 3001 | Grafana (project 02) | — | Per-project instance |
+| Port | Project | Caddy Path | Status | Notes |
+|------|---------|------------|--------|-------|
+| **Shared infra** | | | | |
+| 5432 | postgres (shared) | — | running | localhost only, not exposed publicly |
+| **Built projects** | | | | |
+| 8081 | [01-rate-limiter](../projects/01-rate-limiter/) | `/p01/` | ✅ built | |
+| 8085 | [02-url-shortener](../projects/02-url-shortener/) | `/p02/` | ✅ built | |
+| 8082 | [03-pastebin](../projects/03-pastebin/) | `/p03/` | ✅ built | |
+| 8083 | [04-unique-id-generator](../projects/04-unique-id-generator/) | `/p04/` | ✅ built | |
+| 8084 | [05-consistent-hashing](../projects/05-consistent-hashing/) | `/p05/` | ✅ built | |
+| 8086 | [06-load-balancer](../projects/06-load-balancer/) | `/p06/` | ✅ built | proxy port |
+| 8087 | [06-load-balancer](../projects/06-load-balancer/) | — | ✅ built | admin port (loopback only) |
+| 8088 | [07-api-gateway](../projects/07-api-gateway/) | `/p07/` | ✅ built | |
+| 8089 | [08-basic-key-value-store](../projects/08-basic-key-value-store/) | `/p08/` | ✅ built | |
+| **Reserved — not yet built** | | | | |
+| 8090 | 09-caching-system | `/p09/` | 🔲 planned | |
+| 8091 | 10-notification-system | `/p10/` | 🔲 planned | |
+| 8092 | 11-typeahead-autocomplete-system | `/p11/` | 🔲 planned | |
+| 8093 | 12-web-crawler | `/p12/` | 🔲 planned | |
+| 8094 | 13-message-queue | `/p13/` | 🔲 planned | |
+| 8095 | 14-one-to-one-chat-system | `/p14/` | 🔲 planned | WebSocket |
+| 8096 | 15-group-chat-system | `/p15/` | 🔲 planned | WebSocket |
+| 8097 | 16-news-feed-system | `/p16/` | 🔲 planned | |
+| 8098 | 17-proximity-service | `/p17/` | 🔲 planned | |
+| 8099 | 18-instagram-photo-video-sharing-and-feed | `/p18/` | 🔲 planned | |
+| 8100 | 19-twitter-x-timeline-and-posts | `/p19/` | 🔲 planned | |
+| 8101 | 20-whatsapp-real-time-messaging | `/p20/` | 🔲 planned | WebSocket |
+| 8102 | 21-dropbox-file-storage-and-sync | `/p21/` | 🔲 planned | |
+| 8103 | 22-ticket-booking-system | `/p22/` | 🔲 planned | |
+| 8104 | 23-e-commerce-platform | `/p23/` | 🔲 planned | |
+| 8105 | 24-recommendation-system | `/p24/` | 🔲 planned | |
+| 8106 | 25-distributed-cache | `/p25/` | 🔲 planned | |
+| 8107 | 26-uber-ride-sharing-and-matching | `/p26/` | 🔲 planned | WebSocket |
+| 8108 | 27-netflix-video-streaming-platform | `/p27/` | 🔲 planned | |
+| 8109 | 28-youtube-video-upload-and-streaming | `/p28/` | 🔲 planned | |
+| 8110 | 29-tiktok-short-video-platform | `/p29/` | 🔲 planned | |
+| 8111 | 30-facebook-like-social-network-news-feed | `/p30/` | 🔲 planned | |
+| 8112 | 31-google-docs-real-time-collaborative-editing | `/p31/` | 🔲 planned | WebSocket |
+| 8113 | 32-content-delivery-network-cdn | `/p32/` | 🔲 planned | |
+| 8114 | 33-search-engine | `/p33/` | 🔲 planned | |
+| 8115 | 34-google-maps-routing-and-location-services | `/p34/` | 🔲 planned | |
+| 8116 | 35-distributed-database | `/p35/` | 🔲 planned | |
+| 8117 | 36-real-time-analytics-system | `/p36/` | 🔲 planned | |
+| 8118 | 37-ad-serving-and-tracking-system | `/p37/` | 🔲 planned | |
+| 8119 | 38-fraud-detection-system | `/p38/` | 🔲 planned | |
+| 8120 | 39-stock-trading-exchange-system | `/p39/` | 🔲 planned | WebSocket |
+| 8121 | 40-distributed-job-scheduler | `/p40/` | 🔲 planned | |
+| 8122 | 41-event-sourcing-and-cqrs-architecture | `/p41/` | 🔲 planned | |
+| 8123 | 42-multi-tenant-saas-platform | `/p42/` | 🔲 planned | |
+| 8124 | 43-live-video-streaming-at-scale | `/p43/` | 🔲 planned | WebSocket |
+| 8125 | 44-highly-scalable-nosql-database | `/p44/` | 🔲 planned | |
+| 8126 | 45-real-time-multiplayer-game-backend | `/p45/` | 🔲 planned | WebSocket |
+| 8127 | 46-ml-model-serving-infrastructure | `/p46/` | 🔲 planned | |
+| 8128 | 47-geo-distributed-low-latency-system | `/p47/` | 🔲 planned | |
+| 8129 | 48-strongly-consistent-global-database | `/p48/` | 🔲 planned | |
+| 8130 | 49-high-frequency-trading-platform | `/p49/` | 🔲 planned | WebSocket |
+| 8131 | 50-planet-scale-distributed-system | `/p50/` | 🔲 planned | |
+| **Monitoring** | | | | |
+| 9090 | Prometheus (shared infra) | — | running | |
+| 3000 | Grafana (shared infra) | — | running | |
 
 ## Convention
 
-- App port = `8079 + project_number` (so project N → port `8079+N`)
-- Prometheus per project: `9090 + project_number` → `9091`, `9092`, ...
-- Grafana per project: `3000 + project_number` → `3001`, `3002`, ...
-- Postgres is shared on port 5432 (host), exposed on `localhost` only
+- Ports are assigned sequentially as projects are built starting from 8081 (project 01).
+- For projects 09 onwards: next available port above 8089, assigned at build time.
+- Multi-port projects (e.g. 06 load-balancer with proxy + admin) each get their own port.
+- Prometheus (shared infra): 9090. Grafana (shared infra): 3000.
+- Postgres is shared on port 5432 (host), exposed on `localhost` only.
+- When adding a new project, claim the next free port in this table before writing the docker-compose.
 
 ## WebSocket notes
 
