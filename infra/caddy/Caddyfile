@@ -83,6 +83,16 @@
         reverse_proxy localhost:8091
     }
 
+    # ── Project 11 — Typeahead Autocomplete (:8092) ──────────────────────────
+    handle_path /p11/* {
+        reverse_proxy localhost:8092
+    }
+
+    # ── Project 12 — Web Crawler (:8093) ──────────────────────────────────────
+    handle_path /p12/* {
+        reverse_proxy localhost:8093
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -126,6 +136,8 @@
   <a href="/p08/"><div class="num">08</div><div class="name">Basic Key-Value Store</div><div class="tag">LSM-tree · WAL · SSTable · Go</div></a>
   <a href="/p09/"><div class="num">09</div><div class="name">Caching System</div><div class="tag">LRU · LFU · TTL · Singleflight · Go</div></a>
   <a href="/p10/"><div class="num">10</div><div class="name">Notification System</div><div class="tag">Fanout · Templates · Retry/DLQ · Preferences · Go</div></a>
+  <a href="/p11/"><div class="num">11</div><div class="name">Typeahead Autocomplete</div><div class="tag">Redis sorted sets · Prefix index · Ranking · Go</div></a>
+  <a href="/p12/"><div class="num">12</div><div class="name">Web Crawler</div><div class="tag">Frontier · robots.txt · Dedup · Content Hash · Go</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>

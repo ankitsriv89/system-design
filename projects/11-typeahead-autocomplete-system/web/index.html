@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Typeahead Autocomplete — System Design</title>
+<link rel="stylesheet" href="/static/styles.css"/>
+</head>
+<body>
+<div id="app">
+  <!-- ── LEFT: Controls + Concept ─────────────────────────────── -->
+  <aside id="left-panel">
+    <header class="panel-header">
+      <span class="pill">Project 11</span>
+      <h1>Typeahead Autocomplete</h1>
+      <p class="subtitle">Sub-10ms suggestions from Redis sorted sets + PostgreSQL corpus</p>
+    </header>
+
+    <!-- Live search demo -->
+    <section class="card" id="search-demo">
+      <h2>Live Search</h2>
+      <div class="search-wrap">
+        <input id="search-input" type="text" placeholder="Start typing…" autocomplete="off"/>
+        <span class="kbd">↵ to select</span>
+      </div>
+      <div id="dropdown" class="dropdown hidden"></div>
+      <div id="search-meta" class="meta-row"></div>
+    </section>
+
+    <!-- Corpus management -->
+    <section class="card" id="corpus-section">
+      <h2>Corpus Management</h2>
+      <div class="form-row">
+        <input id="item-text" type="text" placeholder="Text (e.g. elasticsearch)"/>
+        <input id="item-category" type="text" placeholder="Category (optional)"/>
+        <input id="item-popularity" type="number" placeholder="Popularity (0-1000)" value="100"/>
+        <select id="item-locale">
+          <option value="en">en</option>
+          <option value="es">es</option>
+          <option value="fr">fr</option>
+        </select>
+        <button id="btn-add-item" class="btn btn-primary">Add Item</button>
+      </div>
+      <div id="corpus-msg" class="msg"></div>
+    </section>
+
+    <!-- Admin controls -->
+    <section class="card" id="admin-section">
+      <h2>Admin Controls</h2>
+      <div class="btn-row">
+        <button id="btn-rebuild" class="btn btn-warn">Rebuild Index</button>
+        <button id="btn-stats" class="btn btn-secondary">Refresh Stats</button>
+        <button id="btn-seed" class="btn btn-secondary">Seed Corpus</button>
+      </div>
+      <div id="admin-msg" class="msg"></div>
+    </section>
+
+    <!-- Concept explanation -->
+    <section class="card" id="concept-section">
+      <h2>How It Works</h2>
+      <details open>
+        <summary>Trie vs Redis Sorted Sets</summary>
+        <p>A trie stores characters as tree nodes and walks them on each keystroke.
+        Redis sorted sets take a different angle: every corpus item is inserted under
+        <em>all</em> its prefixes as a member with its popularity as the score.
+        <code>ZREVRANGE ac:pfx:en:go 0 9</code> returns the top-10 items instantly — O(log N + K).</p>
+      </details>
+      <details>
+        <summary>Ranking &amp; Click Feedback</summary>
+        <p>Each item carries a <strong>popularity</strong> float. When a user clicks a suggestion
+        the backend calls <code>IncrementPopularity</code>, which raises the Redis score for all
+        prefixes of that item in one pipeline — no rebuild needed. Scores decay only on full
+        index rebuilds (controlled by the rebuild interval).</p>
+      </details>
+      <details>
+        <summary>Hot Prefix Caching</summary>
+        <p>Redis keys carry a 24-hour TTL. On a cache miss the handler falls back to a
+        PostgreSQL <code>LIKE prefix%</code> query and back-fills Redis atomically.
+        Popular prefixes never touch Postgres again within the TTL window.</p>
+      </details>
+      <details>
+        <summary>Index Rebuild</summary>
+        <p>A background goroutine rebuilds the full index every <code>REBUILD_INTERVAL</code>
+        (default 30 min). It deletes all <code>ac:pfx:*</code> keys, then re-inserts every corpus
+        item in 500-row batches — preventing stale entries from deleted items from persisting.</p>
+      </details>
+      <details>
+        <summary>Performance Target</summary>
+        <ul>
+          <li>p50 suggest: &lt; 2 ms (Redis hit)</li>
+          <li>p95 suggest: &lt; 8 ms (Redis hit)</li>
+          <li>p99 suggest: &lt; 25 ms (PG fallback)</li>
+          <li>Add item: &lt; 20 ms</li>
+          <li>Full rebuild (10k items): &lt; 5 s</li>
+        </ul>
+      </details>
+    </section>
+  </aside>
+
+  <!-- ── CENTRE: Live Trie / Prefix Visualisation ──────────────── -->
+  <main id="center-panel">
+    <div class="panel-header">
+      <h2>Prefix Index Visualisation</h2>
+      <p class="subtitle">Watch the active prefix path light up as you type</p>
+    </div>
+    <canvas id="trie-canvas"></canvas>
+    <div id="trie-legend">
+      <span class="legend-dot active"></span> active path &nbsp;
+      <span class="legend-dot node"></span> node &nbsp;
+      <span class="legend-dot match"></span> match
+    </div>
+
+    <!-- Latency sparkline -->
+    <div class="card" id="latency-card">
+      <h3>Suggest Latency (last 60 requests)</h3>
+      <canvas id="latency-canvas"></canvas>
+      <div id="latency-stats" class="meta-row"></div>
+    </div>
+
+    <!-- Algorithm walkthrough -->
+    <div class="card" id="algo-card">
+      <h3>Algorithm Step-by-Step</h3>
+      <div id="algo-steps"></div>
+    </div>
+  </main>
+
+  <!-- ── RIGHT: API Output Log ─────────────────────────────────── -->
+  <aside id="right-panel">
+    <div class="panel-header">
+      <h2>API Log</h2>
+      <div class="btn-row">
+        <button id="btn-clear-log" class="btn btn-secondary btn-sm">Clear</button>
+      </div>
+    </div>
+    <div id="stats-box" class="stats-grid"></div>
+    <pre id="log-output"></pre>
+  </aside>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+version: "3.9"
+
+networks:
+  infra:
+    external: true
+
+services:
+  typeahead:
+    build: .
+    image: 11-typeahead-autocomplete-system:latest
+    restart: unless-stopped
+    ports:
+      - "8092:8092"
+    environment:
+      LISTEN_ADDR: ":8092"
+      DATABASE_URL: "postgres://typeahead:typeahead@postgres:5432/typeahead?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      REBUILD_INTERVAL: "30m"
+    networks:
+      - infra
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: typeahead
+      POSTGRES_PASSWORD: typeahead
+      POSTGRES_DB: typeahead
+    volumes:
+      - typeahead-pg-data:/var/lib/postgresql/data
+      - ./scripts/migrate.sql:/docker-entrypoint-initdb.d/01_migrate.sql
+    networks:
+      - infra
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - infra
+
+volumes:
+  typeahead-pg-data:

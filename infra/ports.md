@@ -19,8 +19,8 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | **Reserved — not yet built** | | | | |
 | 8090 | [09-caching-system](../projects/09-caching-system/) | `/p09/` | ✅ built | |
 | 8091 | [10-notification-system](../projects/10-notification-system/) | `/p10/` | ✅ built | |
-| 8092 | 11-typeahead-autocomplete-system | `/p11/` | 🔲 planned | |
-| 8093 | 12-web-crawler | `/p12/` | 🔲 planned | |
+| 8092 | [11-typeahead-autocomplete-system](../projects/11-typeahead-autocomplete-system/) | `/p11/` | ✅ built | |
+| 8093 | [12-web-crawler](../projects/12-web-crawler/) | `/p12/` | ✅ built | |
 | 8094 | 13-message-queue | `/p13/` | 🔲 planned | |
 | 8095 | 14-one-to-one-chat-system | `/p14/` | 🔲 planned | WebSocket |
 | 8096 | 15-group-chat-system | `/p15/` | 🔲 planned | WebSocket |
