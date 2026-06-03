@@ -73,6 +73,11 @@
         reverse_proxy localhost:8089
     }
 
+    # ── Project 09 — Caching System (:8090) ───────────────────────────────────
+    handle_path /p09/* {
+        reverse_proxy localhost:8090
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -114,6 +119,7 @@
   <a href="/p06/"><div class="num">06</div><div class="name">Load Balancer</div><div class="tag">Round-robin · Health checks · Go</div></a>
   <a href="/p07/"><div class="num">07</div><div class="name">API Gateway</div><div class="tag">Rate limit · Auth · Routing · Go</div></a>
   <a href="/p08/"><div class="num">08</div><div class="name">Basic Key-Value Store</div><div class="tag">LSM-tree · WAL · SSTable · Go</div></a>
+  <a href="/p09/"><div class="num">09</div><div class="name">Caching System</div><div class="tag">LRU · LFU · TTL · Singleflight · Go</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>

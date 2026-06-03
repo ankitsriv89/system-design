@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caching System — System Design #09</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="badge">09</span>
+      <h1>Caching System</h1>
+      <span class="subtitle">LRU · LFU · TTL · Stampede Protection</span>
+    </div>
+  </header>
+
+  <main class="layout">
+
+    <!-- ── LEFT: Controls + Concept ── -->
+    <aside class="panel panel-left">
+
+      <section class="concept">
+        <h2>How It Works</h2>
+        <p>A cache sits between your application and a slow data source (DB, API). It stores recent results in fast memory so repeated reads skip the expensive backend.</p>
+
+        <details open>
+          <summary>Cache-Aside Pattern</summary>
+          <ol>
+            <li>App reads from cache → <strong>HIT</strong>: return value instantly.</li>
+            <li>→ <strong>MISS</strong>: load from source, write to cache, return.</li>
+            <li>Writes go directly to the source; cache is invalidated or TTL expires.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>LRU vs LFU Eviction</summary>
+          <p><strong>LRU (Least Recently Used)</strong> — evicts the key that hasn't been accessed for the longest time. Good for temporal locality; recently accessed keys stay warm.</p>
+          <p><strong>LFU (Least Frequently Used)</strong> — evicts the key with the fewest total accesses. Better for skewed workloads where a few hot keys dominate.</p>
+          <p>Switch the policy via the ENV var <code>EVICTION_POLICY=lfu</code>.</p>
+        </details>
+
+        <details>
+          <summary>TTL & Expiry</summary>
+          <p>Every entry can carry a Time-To-Live. Two eviction paths:</p>
+          <ul>
+            <li><strong>Lazy expiry</strong>: checked on every GET — stale entries are evicted on access.</li>
+            <li><strong>Active sweep</strong>: a background goroutine walks the map every 30 s and removes expired keys.</li>
+          </ul>
+        </details>
+
+        <details>
+          <summary>Stampede Protection</summary>
+          <p>When a popular key expires, hundreds of requests may all miss simultaneously and race to reload the backend — a <em>cache stampede</em>.</p>
+          <p>This implementation uses <code>singleflight.Group</code>: only the first goroutine calls the loader; the rest wait and reuse the result. Trigger the demo below.</p>
+        </details>
+
+        <details>
+          <summary>AOF Warm Restart</summary>
+          <p>Every SET/DELETE is appended to an AOF (append-only file). On restart the log is replayed to restore the cache — expired entries are skipped automatically.</p>
+        </details>
+      </section>
+
+      <section class="controls">
+        <h2>Cache Operations</h2>
+
+        <div class="control-group">
+          <label>Policy (current)</label>
+          <div id="current-policy" class="badge-policy">—</div>
+        </div>
+
+        <div class="control-group">
+          <label for="set-key">Key</label>
+          <input id="set-key" type="text" placeholder="my-key" maxlength="128">
+        </div>
+        <div class="control-group">
+          <label for="set-value">Value</label>
+          <input id="set-value" type="text" placeholder="hello world" maxlength="512">
+        </div>
+        <div class="control-group">
+          <label for="set-ttl">TTL (ms) <span class="hint">0 = default/no expiry</span></label>
+          <input id="set-ttl" type="number" min="0" value="0" step="1000">
+        </div>
+        <button id="btn-set" class="btn btn-primary">SET</button>
+
+        <hr>
+
+        <div class="control-group">
+          <label for="get-key">GET / DELETE key</label>
+          <input id="get-key" type="text" placeholder="my-key" maxlength="128">
+        </div>
+        <div class="btn-row">
+          <button id="btn-get" class="btn btn-secondary">GET</button>
+          <button id="btn-delete" class="btn btn-danger">DELETE</button>
+        </div>
+
+        <hr>
+
+        <div class="btn-row">
+          <button id="btn-flush" class="btn btn-danger">FLUSH ALL</button>
+          <button id="btn-seed" class="btn btn-secondary">Seed 20 keys</button>
+        </div>
+
+        <hr>
+
+        <h3>Stampede Demo</h3>
+        <p class="hint">Fire 40 concurrent GETs for a missing key. Singleflight ensures the loader runs only once.</p>
+        <div class="control-group">
+          <label for="stampede-key">Hot Key</label>
+          <input id="stampede-key" type="text" value="stampede-key">
+        </div>
+        <button id="btn-stampede" class="btn btn-warning">Trigger Stampede</button>
+        <div id="stampede-result" class="stampede-result hidden"></div>
+      </section>
+    </aside>
+
+    <!-- ── CENTER: Live Visualisation ── -->
+    <section class="panel panel-center">
+      <h2>Live Cache State</h2>
+
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-keys">0</div>
+          <div class="stat-label">Keys</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-hitrate">0%</div>
+          <div class="stat-label">Hit Rate</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-hits">0</div>
+          <div class="stat-label">Hits</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-misses">0</div>
+          <div class="stat-label">Misses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-evictions">0</div>
+          <div class="stat-label">Evictions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-memory">0 B</div>
+          <div class="stat-label">Memory</div>
+        </div>
+      </div>
+
+      <!-- Hit-rate arc gauge -->
+      <div class="gauge-container">
+        <canvas id="gauge-canvas" width="260" height="150"></canvas>
+        <div class="gauge-label">Hit Rate</div>
+      </div>
+
+      <!-- LRU/LFU eviction order visualisation -->
+      <div class="eviction-vis">
+        <h3>Eviction Order <span class="hint">(left = next evicted)</span></h3>
+        <div id="eviction-track" class="eviction-track"></div>
+      </div>
+
+      <!-- Memory bar -->
+      <div class="mem-bar-container">
+        <div class="mem-bar-label">
+          Memory <span id="mem-used-label">0 B</span> / <span id="mem-max-label">—</span>
+        </div>
+        <div class="mem-bar-bg">
+          <div id="mem-bar-fill" class="mem-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- Request flow animation canvas -->
+      <div class="flow-container">
+        <h3>Request Flow</h3>
+        <canvas id="flow-canvas" width="520" height="120"></canvas>
+      </div>
+    </section>
+
+    <!-- ── RIGHT: API Output Log ── -->
+    <aside class="panel panel-right">
+      <div class="log-header">
+        <h2>API Log</h2>
+        <button id="btn-clear-log" class="btn-icon">✕ clear</button>
+      </div>
+      <div id="api-log" class="api-log"></div>
+    </aside>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

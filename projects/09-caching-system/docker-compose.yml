@@ -1,0 +1,30 @@
+services:
+  caching-system:
+    build: .
+    image: 09-caching-system:latest
+    container_name: caching-system
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      AOF_PATH: /data/cache/cache.aof
+      LISTEN_ADDR: :8090
+      EVICTION_POLICY: lru
+      MAX_MEMORY_MB: "64"
+      DEFAULT_TTL_MS: "0"
+    volumes:
+      - cache_data:/data/cache
+    networks:
+      - infra
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  cache_data:
+
+networks:
+  infra:
+    external: true
