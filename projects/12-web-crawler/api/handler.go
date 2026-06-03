@@ -103,7 +103,12 @@ func (h *Handler) createJob(w http.ResponseWriter, r *http.Request) {
 	parsed, _ := url.Parse(norm)
 	host := ""
 	if parsed != nil {
-		host = parsed.Host
+		host = parsed.Hostname()
+	}
+	// SSRF guard: reject URLs that resolve to private/loopback IPs.
+	if err := crawler.IsPublicHost(host); err != nil {
+		h.writeError(w, http.StatusBadRequest, "seed_url resolves to a private address")
+		return
 	}
 	if err := h.db.EnqueueURL(ctx, norm, host, 10, 0); err != nil {
 		h.log.Warn("enqueue seed", zap.Error(err))
@@ -208,7 +213,12 @@ func (h *Handler) enqueueURL(w http.ResponseWriter, r *http.Request) {
 	parsed, _ := url.Parse(norm)
 	host := ""
 	if parsed != nil {
-		host = parsed.Host
+		host = parsed.Hostname()
+	}
+	// SSRF guard: reject URLs that resolve to private/loopback IPs.
+	if err := crawler.IsPublicHost(host); err != nil {
+		h.writeError(w, http.StatusBadRequest, "url resolves to a private address")
+		return
 	}
 	if err := h.db.EnqueueURL(ctx, norm, host, req.Priority, 0); err != nil {
 		h.log.Error("enqueue url", zap.Error(err))

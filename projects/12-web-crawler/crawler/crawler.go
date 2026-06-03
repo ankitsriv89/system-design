@@ -197,17 +197,14 @@ type HTTPFetcher struct {
 	userAgent string
 }
 
-// NewHTTPFetcher creates a fetcher with a shared transport and a 15 s timeout.
+// NewHTTPFetcher creates a fetcher using the safe transport (SSRF-hardened dialer)
+// and CheckRedirectSSRF to validate every redirect hop.
 func NewHTTPFetcher(userAgent string) *HTTPFetcher {
 	return &HTTPFetcher{
 		client: &http.Client{
-			Timeout: 15 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 5 {
-					return http.ErrUseLastResponse
-				}
-				return nil
-			},
+			Timeout:       15 * time.Second,
+			Transport:     NewSafeTransport(),
+			CheckRedirect: CheckRedirectSSRF,
 		},
 		userAgent: userAgent,
 	}
