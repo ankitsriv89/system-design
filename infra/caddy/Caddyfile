@@ -98,6 +98,11 @@
         reverse_proxy localhost:8094
     }
 
+    # ── Project 14 — One-to-One Chat System (:8095) ───────────────────────────
+    handle_path /p14/* {
+        reverse_proxy localhost:8095
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -144,6 +149,7 @@
   <a href="/p11/"><div class="num">11</div><div class="name">Typeahead Autocomplete</div><div class="tag">Redis sorted sets · Prefix index · Ranking · Go</div></a>
   <a href="/p12/"><div class="num">12</div><div class="name">Web Crawler</div><div class="tag">Frontier · robots.txt · Dedup · Content Hash · Go</div></a>
   <a href="/p13/"><div class="num">13</div><div class="name">Message Queue</div><div class="tag">Partitions · Visibility timeout · DLQ · At-least-once · Go</div></a>
+  <a href="/p14/"><div class="num">14</div><div class="name">1:1 Chat System</div><div class="tag">WebSocket · STOMP · Kafka · Redis presence · Java</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>

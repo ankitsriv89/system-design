@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1:1 Chat System — System Design #14</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════════════════════ LEFT PANEL -->
+  <aside id="left-panel">
+    <div class="panel-header">
+      <span class="project-tag">p14</span>
+      <h1>1:1 Chat System</h1>
+    </div>
+
+    <!-- Auth Section -->
+    <section class="card" id="auth-section">
+      <h2>Connect Users</h2>
+      <div class="row">
+        <input id="user-a-id" type="text" placeholder="User A (e.g. alice)" value="alice">
+        <button id="connect-a-btn" class="btn-primary">Connect A</button>
+      </div>
+      <div class="row">
+        <input id="user-b-id" type="text" placeholder="User B (e.g. bob)" value="bob">
+        <button id="connect-b-btn" class="btn-secondary">Connect B</button>
+      </div>
+      <div id="conn-status" class="status-row"></div>
+    </section>
+
+    <!-- Send Message -->
+    <section class="card" id="send-section">
+      <h2>Send Message</h2>
+      <div class="row">
+        <select id="sender-select">
+          <option value="a">User A → B</option>
+          <option value="b">User B → A</option>
+        </select>
+      </div>
+      <div class="row">
+        <input id="msg-body" type="text" placeholder="Type a message…">
+        <button id="send-btn" class="btn-primary">Send</button>
+      </div>
+      <div class="row">
+        <button id="disconnect-a-btn" class="btn-danger">Disconnect A</button>
+        <button id="reconnect-a-btn" class="btn-success">Reconnect A</button>
+      </div>
+    </section>
+
+    <!-- Concept Panel -->
+    <section class="card concept-card">
+      <h2>How It Works</h2>
+      <details open>
+        <summary>WebSocket Hub</summary>
+        <p>Each user opens a persistent STOMP/WebSocket connection. The server's <strong>Hub</strong> maps userId → session, routing messages to the correct recipient without broadcast.</p>
+      </details>
+      <details>
+        <summary>Message Ordering</summary>
+        <p>A monotonic <code>seq</code> counter per conversation guarantees total order. Assigned under a transaction lock — no two messages share a seq.</p>
+      </details>
+      <details>
+        <summary>Kafka Fanout</summary>
+        <p>After persistence, the message is published to Kafka partitioned by <code>recipientId</code>. The consumer delivers it over WebSocket if the recipient is online, or leaves it in Postgres for offline pull.</p>
+      </details>
+      <details>
+        <summary>Offline Delivery</summary>
+        <p>When a user reconnects, the client fetches <code>GET /api/v1/conversations/{id}/messages?before=&lt;lastSeen&gt;</code> to catch up on missed messages from Postgres.</p>
+      </details>
+      <details>
+        <summary>Presence (Redis TTL)</summary>
+        <p>Each WebSocket heartbeat refreshes a Redis key <code>presence:{userId}</code> with a 30 s TTL. A user is "online" as long as that key exists. On disconnect the key is deleted immediately.</p>
+      </details>
+      <details>
+        <summary>Read Receipts</summary>
+        <p>SENT → DELIVERED (WebSocket ACK from Kafka consumer) → READ (client sends explicit receipt frame). Status transitions are append-only — never downgraded.</p>
+      </details>
+    </section>
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════ CENTER: VISUALISATION -->
+  <main id="center-panel">
+    <div class="vis-header">
+      <h2>Live Message Flow</h2>
+      <div id="presence-badges">
+        <span id="badge-a" class="presence-badge offline">User A ●</span>
+        <span id="badge-b" class="presence-badge offline">User B ●</span>
+      </div>
+    </div>
+    <canvas id="flow-canvas"></canvas>
+    <div id="conversation-view">
+      <div id="messages-a" class="message-thread thread-a">
+        <div class="thread-label">User A's view</div>
+      </div>
+      <div id="messages-b" class="message-thread thread-b">
+        <div class="thread-label">User B's view</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════════ RIGHT PANEL -->
+  <aside id="right-panel">
+    <div class="panel-header">
+      <h2>Event Log</h2>
+      <button id="clear-log-btn" class="btn-ghost">Clear</button>
+    </div>
+    <div id="event-log"></div>
+  </aside>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

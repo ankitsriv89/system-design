@@ -1,0 +1,3 @@
+-- Flyway migrations are in src/main/resources/db/migration/
+-- This file is for ad-hoc manual migrations only.
+-- Run via: docker exec -i infra-postgres-1 psql -U chat -d chat < scripts/migrate.sql

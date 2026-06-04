@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: chat-system
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/chat
+    username: chat
+    password: ${POSTGRES_PASSWORD:chat}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 10
+      idle-timeout: 600000
+
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: chat-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.ankitsriv89.chat.dto"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+  security:
+    # Permit-all is handled via SecurityConfig — disable auto password generation
+    user:
+      password: disabled
+
+server:
+  port: 8095
+
+chat:
+  jwt:
+    secret: ${JWT_SECRET:chat-system-dev-secret-at-least-32-bytes-long}
+    expiry-minutes: 1440
+  presence:
+    ttl-seconds: 30
+  kafka:
+    topic:
+      messages: chat.messages
+      receipts: chat.receipts
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.ankitsriv89.chat: INFO
+    org.springframework.web.socket: WARN

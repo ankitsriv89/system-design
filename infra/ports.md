@@ -22,7 +22,7 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | 8092 | [11-typeahead-autocomplete-system](../projects/11-typeahead-autocomplete-system/) | `/p11/` | ✅ built | |
 | 8093 | [12-web-crawler](../projects/12-web-crawler/) | `/p12/` | ✅ built | |
 | 8094 | [13-message-queue](../projects/13-message-queue/) | `/p13/` | ✅ built | |
-| 8095 | 14-one-to-one-chat-system | `/p14/` | 🔲 planned | WebSocket |
+| 8095 | [14-one-to-one-chat-system](../projects/14-one-to-one-chat-system/) | `/p14/` | ✅ built | WebSocket |
 | 8096 | 15-group-chat-system | `/p15/` | 🔲 planned | WebSocket |
 | 8097 | 16-news-feed-system | `/p16/` | 🔲 planned | |
 | 8098 | 17-proximity-service | `/p17/` | 🔲 planned | |

@@ -90,6 +90,7 @@ case "${STACK_NAME}" in
   java)
     PROJECTS=(
       "10-notification-system"
+      "14-one-to-one-chat-system"
     )
     ;;
   other)
