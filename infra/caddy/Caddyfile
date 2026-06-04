@@ -93,6 +93,11 @@
         reverse_proxy localhost:8093
     }
 
+    # ── Project 13 — Message Queue (:8094) ────────────────────────────────────
+    handle_path /p13/* {
+        reverse_proxy localhost:8094
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -138,6 +143,7 @@
   <a href="/p10/"><div class="num">10</div><div class="name">Notification System</div><div class="tag">Fanout · Templates · Retry/DLQ · Preferences · Go</div></a>
   <a href="/p11/"><div class="num">11</div><div class="name">Typeahead Autocomplete</div><div class="tag">Redis sorted sets · Prefix index · Ranking · Go</div></a>
   <a href="/p12/"><div class="num">12</div><div class="name">Web Crawler</div><div class="tag">Frontier · robots.txt · Dedup · Content Hash · Go</div></a>
+  <a href="/p13/"><div class="num">13</div><div class="name">Message Queue</div><div class="tag">Partitions · Visibility timeout · DLQ · At-least-once · Go</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>

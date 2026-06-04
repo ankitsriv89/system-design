@@ -1,0 +1,45 @@
+version: "3.9"
+
+networks:
+  infra:
+    external: true
+
+services:
+  mq:
+    build: .
+    image: 13-message-queue:latest
+    restart: unless-stopped
+    ports:
+      - "8094:8094"
+    environment:
+      LISTEN_ADDR: ":8094"
+      DATABASE_URL: "postgres://mq:mq@postgres:5432/messagequeue?sslmode=disable"
+      REDIS_ADDR: "redis:6379"
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+    networks:
+      - infra
+    depends_on:
+      - postgres-init
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8094/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-init:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGPASSWORD: "postgres"
+    networks:
+      - infra
+    entrypoint: >
+      sh -c "
+        until pg_isready -h postgres -U postgres; do sleep 1; done;
+        psql -h postgres -U postgres -c 'CREATE USER mq WITH PASSWORD ''mq'';' || true;
+        psql -h postgres -U postgres -c 'CREATE DATABASE messagequeue OWNER mq;' || true;
+        psql -h postgres -U mq -d messagequeue -f /migrations/migrate.sql || true
+      "
+    volumes:
+      - ./scripts:/migrations

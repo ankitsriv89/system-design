@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message Queue — System Design #13</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <div class="status-dot" id="statusDot"></div>
+  <h1>Message Queue</h1>
+  <span class="badge">Project #13</span>
+  <span style="margin-left:auto;font-size:11px;color:var(--muted)">at-least-once · per-partition FIFO · DLQ</span>
+</header>
+
+<div class="layout">
+  <!-- ====== LEFT PANEL ====== -->
+  <div class="left-panel">
+
+    <!-- Concept explanation -->
+    <div class="section">
+      <div class="section-title">How It Works</div>
+      <div class="concept-box">
+        <h3>Message Queue</h3>
+        A durable buffer between producers and consumers. Producers write messages to a <strong>topic</strong>; the queue persists them in append-only <strong>partitions</strong>. Consumers poll messages, which become invisible (<em>in-flight</em>) for a configurable <strong>visibility timeout</strong>. After processing, the consumer sends an <strong>ack</strong>. If the consumer crashes before acking, the message reappears after the timeout. Messages that exceed <strong>5 delivery attempts</strong> are moved to the <strong>Dead-Letter Queue</strong>.
+        <div class="kv"><span>Delivery guarantee</span><span>At-least-once</span></div>
+        <div class="kv"><span>Ordering</span><span>Per-partition FIFO</span></div>
+        <div class="kv"><span>Visibility timeout</span><span>30 s (default)</span></div>
+        <div class="kv"><span>Max retries → DLQ</span><span>5 attempts</span></div>
+      </div>
+    </div>
+
+    <!-- Create topic -->
+    <div class="section">
+      <div class="section-title">Create Topic</div>
+      <label>Topic name</label>
+      <input type="text" id="topicName" value="orders" placeholder="e.g. orders">
+      <label>Partitions</label>
+      <input type="number" id="topicPartitions" value="3" min="1" max="16">
+      <label>Retention (hours)</label>
+      <input type="number" id="topicRetention" value="24" min="1">
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="createTopic()">Create</button>
+        <button class="btn btn-secondary" onclick="loadTopics()">Refresh</button>
+      </div>
+      <div id="topicList" style="margin-top:10px;font-size:11px;color:var(--muted)">—</div>
+    </div>
+
+    <!-- Publish -->
+    <div class="section">
+      <div class="section-title">Publish Message</div>
+      <label>Topic</label>
+      <input type="text" id="pubTopic" value="orders">
+      <label>Key (blank = round-robin)</label>
+      <input type="text" id="pubKey" placeholder="e.g. user-42">
+      <label>Payload</label>
+      <textarea id="pubPayload" rows="2">{"item":"book","qty":1}</textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="publishMessage()">Publish</button>
+        <button class="btn btn-secondary btn-sm" onclick="publishBurst()">Burst ×10</button>
+      </div>
+    </div>
+
+    <!-- Poll + Ack -->
+    <div class="section">
+      <div class="section-title">Poll &amp; Ack</div>
+      <label>Topic</label>
+      <input type="text" id="pollTopic" value="orders">
+      <label>Consumer group</label>
+      <input type="text" id="pollGroup" value="billing-service">
+      <label>Max messages</label>
+      <input type="number" id="pollMax" value="5" min="1" max="100">
+      <label>Visibility timeout (s)</label>
+      <input type="number" id="pollVt" value="30" min="5" max="300">
+      <div class="btn-row">
+        <button class="btn btn-success" onclick="pollMessages()">Poll</button>
+        <button class="btn btn-warning" onclick="ackAll()">Ack All</button>
+      </div>
+      <div id="polledList" style="margin-top:8px;font-size:11px;"></div>
+    </div>
+
+    <!-- Failure demo -->
+    <div class="section failure-controls">
+      <div class="section-title">Failure Demos</div>
+      <div class="failure-btn-grid">
+        <button class="btn btn-secondary btn-sm" onclick="demoNoAck()">No-Ack Crash</button>
+        <button class="btn btn-secondary btn-sm" onclick="demoPoisonMsg()">Poison Msg</button>
+        <button class="btn btn-secondary btn-sm" onclick="demoViewDLQ()">View DLQ</button>
+        <button class="btn btn-secondary btn-sm" onclick="demoStats()">Stats</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== CENTER PANEL ====== -->
+  <div class="center-panel">
+    <div class="viz-header">
+      <h2 id="vizTitle">Queue Topology</h2>
+      <div class="viz-tabs">
+        <button class="tab-btn active" onclick="switchViz('topology')">Topology</button>
+        <button class="tab-btn" onclick="switchViz('flow')">Message Flow</button>
+        <button class="tab-btn" onclick="switchViz('algo')">Algorithm</button>
+        <button class="tab-btn" onclick="switchViz('depth')">Depth</button>
+      </div>
+    </div>
+    <div class="viz-body" id="vizBody">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-cell"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-cell"><div class="stat-val" id="statPending">0</div><div class="stat-lbl">Pending</div></div>
+      <div class="stat-cell"><div class="stat-val" id="statInflight">0</div><div class="stat-lbl">In-flight</div></div>
+      <div class="stat-cell"><div class="stat-val" id="statAcked">0</div><div class="stat-lbl">Acked</div></div>
+      <div class="stat-cell"><div class="stat-val" id="statDLQ">0</div><div class="stat-lbl">DLQ</div></div>
+    </div>
+  </div>
+
+  <!-- ====== RIGHT PANEL ====== -->
+  <div class="right-panel">
+    <div class="log-header">
+      <span>API Log</span>
+      <button class="btn btn-secondary btn-sm" onclick="clearLog()">Clear</button>
+    </div>
+    <div id="logContainer"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
