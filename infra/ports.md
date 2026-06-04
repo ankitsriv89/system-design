@@ -24,7 +24,7 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | 8094 | [13-message-queue](../projects/13-message-queue/) | `/p13/` | ✅ built | |
 | 8095 | [14-one-to-one-chat-system](../projects/14-one-to-one-chat-system/) | `/p14/` | ✅ built | WebSocket |
 | 8096 | [15-group-chat-system](../projects/15-group-chat-system/) | `/p15/` | 🔧 in progress | WebSocket |
-| 8097 | 16-news-feed-system | `/p16/` | 🔲 planned | |
+| 8097 | [16-news-feed-system](../projects/16-news-feed-system/) | `/p16/` | 🔧 in progress | hybrid fanout |
 | 8098 | 17-proximity-service | `/p17/` | 🔲 planned | |
 | 8099 | 18-instagram-photo-video-sharing-and-feed | `/p18/` | 🔲 planned | |
 | 8100 | 19-twitter-x-timeline-and-posts | `/p19/` | 🔲 planned | |

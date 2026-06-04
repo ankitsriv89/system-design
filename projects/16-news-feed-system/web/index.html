@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16 — News Feed System</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- LEFT: Concept -->
+  <aside class="panel concept-panel">
+    <h1 class="panel-title">News Feed System</h1>
+    <p class="panel-sub">Project 16 · Real-Time &amp; Product Systems</p>
+
+    <section class="concept-block">
+      <h2>Architecture</h2>
+      <ul>
+        <li><strong>Hybrid fanout</strong> — normal authors fan out <em>on write</em> into follower timelines; celebrities are pulled <em>on read</em></li>
+        <li><strong>Kafka pipeline</strong> — <code>post.created</code> events drive an async fanout worker, decoupling the write path from materialization</li>
+        <li><strong>PostgreSQL</strong> — durable source of truth for posts and the follow graph</li>
+        <li><strong>Redis sorted sets</strong> — one ZSET per user holds the materialized, ranked home timeline</li>
+        <li><strong>Time-decay ranking</strong> — score = exp(−age / half-life); feed is ranked, not purely chronological</li>
+      </ul>
+    </section>
+
+    <section class="concept-block">
+      <h2>Key Design Decisions</h2>
+      <ul>
+        <li>Post is committed to Postgres <em>before</em> the Kafka event fires — never fan out a post that isn't durable</li>
+        <li>Celebrity threshold caps write amplification; their posts merge in at read time</li>
+        <li>Deletes are soft + honored lazily at read time, so a stale ZSET entry never surfaces a deleted post</li>
+        <li>Following someone backfills your timeline from their recent history</li>
+        <li>At-least-once Kafka is safe because fanout (ZADD) is idempotent</li>
+      </ul>
+    </section>
+
+    <section class="concept-block">
+      <h2>APIs</h2>
+      <code class="api-list">
+POST /v1/posts<br>
+DELETE /v1/posts/{id}<br>
+POST /v1/follows<br>
+GET  /v1/feed?limit=20<br>
+POST /v1/feed/backfill<br>
+GET  /v1/feed/stats
+      </code>
+    </section>
+
+    <section class="concept-block">
+      <h2>Failure modes handled</h2>
+      <ul>
+        <li>Celebrity fanout · stale feed · ranking decay · deleted post in feed</li>
+      </ul>
+    </section>
+  </aside>
+
+  <!-- CENTER: Demo -->
+  <main class="panel demo-panel">
+    <div class="demo-head">
+      <h2 class="panel-title">Live Demo</h2>
+      <div class="who" id="who">not signed in</div>
+    </div>
+
+    <div class="auth-row" id="authRow">
+      <input id="userId" placeholder="pick a user id (e.g. alice)" autocomplete="off">
+      <button id="loginBtn">Sign in</button>
+    </div>
+
+    <div class="actions" id="actions" hidden>
+      <div class="compose">
+        <input id="postBody" maxlength="1000" placeholder="write a post…" autocomplete="off">
+        <button id="postBtn">Post</button>
+      </div>
+      <div class="follow">
+        <input id="followee" placeholder="follow a user id…" autocomplete="off">
+        <button id="followBtn">Follow</button>
+      </div>
+      <div class="feed-tools">
+        <button id="refreshBtn">Refresh feed</button>
+        <button id="backfillBtn" class="ghost">Backfill timeline</button>
+        <span class="stat" id="timelineStat"></span>
+      </div>
+    </div>
+
+    <ul class="feed" id="feed"></ul>
+  </main>
+
+  <!-- RIGHT: Activity log -->
+  <aside class="panel log-panel">
+    <h2 class="panel-title">Activity</h2>
+    <p class="panel-sub">requests &amp; responses</p>
+    <div class="log" id="log"></div>
+  </aside>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
