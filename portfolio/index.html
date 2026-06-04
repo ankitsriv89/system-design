@@ -700,7 +700,7 @@
   .progress-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--green), var(--cyan));
-    width: 8%; /* 4/50 */
+    width: 26%; /* 13/50 */
     box-shadow: 0 0 8px var(--cyan);
     transition: width 1s ease;
   }
@@ -736,7 +736,7 @@
       </div>
       <div>
         <div class="site-title">System Design Portfolio</div>
-        <div class="site-subtitle">50 distributed systems · single Oracle Cloud ARM instance</div>
+        <div class="site-subtitle">50 distributed systems · AWS Spot ARM instances</div>
         <div class="progress-bar-wrap" style="margin-top:0.4rem;width:240px;">
           <div class="progress-bar-fill"></div>
         </div>
@@ -745,11 +745,11 @@
 
     <div class="header-stats">
       <div class="stat">
-        <div class="stat-value" id="live-count">04</div>
+        <div class="stat-value" id="live-count">13</div>
         <div class="stat-label">Live</div>
       </div>
       <div class="stat">
-        <div class="stat-value" style="color:var(--text-dim)">46</div>
+        <div class="stat-value" style="color:var(--text-dim)">37</div>
         <div class="stat-label">Building</div>
       </div>
       <div class="stat">
@@ -799,8 +799,8 @@
     </div>
   </div>
   <div class="footer-right">
-    Oracle Cloud · ARM64 Ampere A1<br>
-    4 OCPUs · 24 GB RAM · $0/mo
+    AWS Spot · ARM64 t4g · ap-south-1<br>
+    Go · Java · Python · Rust · ~$0.94/day
   </div>
 </footer>
 
@@ -816,15 +816,15 @@ const PROJECTS = [
   { id:'02', name:'URL Shortener',            phase:1, desc:'Hash-based short URL generation with analytics.',                            stack:['Go','PostgreSQL','Redis'],               live:true  },
   { id:'03', name:'Pastebin',                 phase:1, desc:'Paste storage with TTL, object store, and syntax metadata.',                 stack:['Go','PostgreSQL','MinIO','Redis'],        live:true  },
   { id:'04', name:'Unique ID Generator',      phase:1, desc:'Snowflake IDs with worker leasing and batch generation.',                   stack:['Go','PostgreSQL'],                       live:true  },
-  { id:'05', name:'Consistent Hashing',       phase:1, desc:'Virtual-node ring with visualizer.',                                        stack:['Go','CLI'],                              live:false },
-  { id:'06', name:'Load Balancer',            phase:1, desc:'HTTP reverse proxy with multiple algorithms.',                               stack:['Go','Docker'],                           live:false },
-  { id:'07', name:'API Gateway',              phase:1, desc:'Auth, routing, rate limiting at the edge.',                                 stack:['Go','Redis','PostgreSQL'],               live:false },
-  { id:'08', name:'Key-Value Store',          phase:1, desc:'Write-ahead log and SSTable storage engine.',                               stack:['Go','WAL'],                              live:false },
-  { id:'09', name:'Caching System',           phase:1, desc:'Redis-compatible protocol subset implementation.',                          stack:['Go'],                                    live:false },
-  { id:'10', name:'Notification System',      phase:1, desc:'Multi-channel fan-out with Kafka.',                                        stack:['Java','Spring Boot','Kafka'],            live:false },
-  { id:'11', name:'Typeahead Autocomplete',   phase:1, desc:'Trie + Redis prefix search.',                                              stack:['Go','Redis','PostgreSQL'],               live:false },
-  { id:'12', name:'Web Crawler',              phase:1, desc:'Distributed crawl with dedup and frontier queue.',                         stack:['Go','Kafka','PostgreSQL'],               live:false },
-  { id:'13', name:'Message Queue',            phase:1, desc:'Durable queue with consumer groups.',                                      stack:['Go','PostgreSQL'],                       live:false },
+  { id:'05', name:'Consistent Hashing',       phase:1, desc:'Virtual-node ring with visualizer.',                                        stack:['Go','CLI'],                              live:true  },
+  { id:'06', name:'Load Balancer',            phase:1, desc:'HTTP reverse proxy with multiple algorithms.',                               stack:['Go','Docker'],                           live:true  },
+  { id:'07', name:'API Gateway',              phase:1, desc:'Auth, routing, rate limiting at the edge.',                                 stack:['Go','Redis','PostgreSQL'],               live:true  },
+  { id:'08', name:'Key-Value Store',          phase:1, desc:'Write-ahead log and SSTable storage engine.',                               stack:['Go','WAL'],                              live:true  },
+  { id:'09', name:'Caching System',           phase:1, desc:'Redis-compatible protocol subset implementation.',                          stack:['Go'],                                    live:true  },
+  { id:'10', name:'Notification System',      phase:1, desc:'Multi-channel fan-out with Kafka.',                                        stack:['Java','Spring Boot','Kafka'],            live:true  },
+  { id:'11', name:'Typeahead Autocomplete',   phase:1, desc:'Trie + Redis prefix search.',                                              stack:['Go','Redis','PostgreSQL'],               live:true  },
+  { id:'12', name:'Web Crawler',              phase:1, desc:'Distributed crawl with dedup and frontier queue.',                         stack:['Go','Kafka','PostgreSQL'],               live:true  },
+  { id:'13', name:'Message Queue',            phase:1, desc:'Durable queue with consumer groups.',                                      stack:['Go','PostgreSQL'],                       live:true  },
   // Phase 2
   { id:'14', name:'1:1 Chat System',          phase:2, desc:'WebSocket messaging with delivery receipts.',                              stack:['Java','WebSockets','Kafka'],             live:false },
   { id:'15', name:'Group Chat System',        phase:2, desc:'Fan-out to group members with read tracking.',                            stack:['Java','Kafka'],                          live:false },
@@ -846,14 +846,14 @@ const PROJECTS = [
   { id:'30', name:'Facebook Clone',           phase:3, desc:'Social graph, news feed, notifications.',                            stack:['Java','Kafka'],                          live:false },
   { id:'31', name:'Google Docs Clone',        phase:3, desc:'CRDT-based real-time collaborative editing.',                        stack:['Java','WebSockets'],                     live:false },
   { id:'32', name:'CDN',                      phase:3, desc:'Edge caching, origin pull, invalidation.',                           stack:['Go'],                                    live:false },
-  { id:'33', name:'Search Engine',            phase:3, desc:'Inverted index, ranking, crawl integration.',                        stack:['Go','OpenSearch'],                       live:false },
+  { id:'33', name:'Search Engine',            phase:3, desc:'Inverted index, ranking, crawl integration.',                        stack:['Java','Python','OpenSearch'],            live:false },
   { id:'34', name:'Google Maps Clone',        phase:3, desc:'Routing, ETA, geospatial index.',                                   stack:['Java','PostGIS'],                        live:false },
   { id:'35', name:'Distributed Database',     phase:3, desc:'Raft consensus, replication, sharding.',                            stack:['Go','Raft'],                             live:false },
   // Phase 4
   { id:'36', name:'Real-Time Analytics',      phase:4, desc:'Stream processing and dashboards.',                                  stack:['Python','Kafka'],                        live:false },
-  { id:'37', name:'Ad Serving',               phase:4, desc:'Low-latency targeting and click tracking.',                         stack:['Go','Redis'],                            live:false },
+  { id:'37', name:'Ad Serving',               phase:4, desc:'Low-latency targeting and click tracking.',                         stack:['Java','Spring Boot','ClickHouse'],       live:false },
   { id:'38', name:'Fraud Detection',          phase:4, desc:'ML scoring on transaction streams.',                                stack:['Python','Kafka'],                        live:false },
-  { id:'39', name:'Stock Exchange',           phase:4, desc:'Order matching engine with WebSocket feed.',                        stack:['Go','WebSockets'],                       live:false },
+  { id:'39', name:'Stock Exchange',           phase:4, desc:'Order matching engine with WebSocket feed.',                        stack:['Java','Rust','Kafka'],                   live:false },
   { id:'40', name:'Job Scheduler',            phase:4, desc:'Distributed cron with leader election.',                           stack:['Go','PostgreSQL'],                       live:false },
   { id:'41', name:'Event Sourcing & CQRS',    phase:4, desc:'Event store, projections, sagas.',                                 stack:['Java','Kafka'],                          live:false },
   { id:'42', name:'Multi-Tenant SaaS',        phase:4, desc:'Tenant isolation, billing, and provisioning.',                     stack:['Java'],                                  live:false },
@@ -864,7 +864,7 @@ const PROJECTS = [
   // Phase 5
   { id:'47', name:'Geo-Distributed System',   phase:5, desc:'Multi-region active-active with conflict resolution.',            stack:['Go'],                                    live:false },
   { id:'48', name:'Strongly Consistent DB',   phase:5, desc:'Spanner-style consensus across regions.',                        stack:['Go','Raft'],                             live:false },
-  { id:'49', name:'High-Frequency Trading',   phase:5, desc:'Sub-millisecond matching with LMAX Disruptor pattern.',          stack:['Go'],                                    live:false },
+  { id:'49', name:'High-Frequency Trading',   phase:5, desc:'Sub-millisecond matching with LMAX Disruptor pattern.',          stack:['Rust','Java'],                           live:false },
   { id:'50', name:'Planet-Scale System',      phase:5, desc:'Global partitioning, replication, and coordination.',            stack:['Go'],                                    live:false },
 ];
 
