@@ -31,10 +31,20 @@ Detailed rules live in `.claude/rules/` and are injected when relevant files are
 
 ## Project quick-reference
 
+### Tech stack by phase
+
+| Projects | Stack | Notes |
+|----------|-------|-------|
+| 01–13 | Go | Foundational & infra systems |
+| 14–30 | Java 21 / Spring Boot 3 / Gradle | Real-Time & Product Systems, Distributed Infrastructure |
+| 25+ varies | Check `plan.md` | Some later projects use Go, Rust, TypeScript — plan.md is authoritative |
+
+**Always read the project's `plan.md` (and `README.md`) for the recommended stack before scaffolding. Never default to Go for projects 14+.**
+
 ### Port registry
 Authoritative source: `infra/ports.md`. Never assign a port without checking it first.
 
-### Package layout
+### Package layout — Go projects (01–13)
 ```
 <project-slug>/
 ├── main.go           — wiring only
@@ -51,8 +61,35 @@ Authoritative source: `infra/ports.md`. Never assign a port without checking it 
 └── go.sum
 ```
 
+### Package layout — Java/Spring Boot projects (14+)
+```
+<project-slug>/
+├── src/
+│   ├── main/
+│   │   ├── java/com/ankitsriv89/<slug>/
+│   │   │   ├── <Slug>Application.java   — @SpringBootApplication entry point
+│   │   │   ├── config/                  — Spring configs (WebSocket, Security, Redis, Kafka)
+│   │   │   ├── domain/                  — entities, value objects, domain logic
+│   │   │   ├── api/                     — @RestController, @MessageMapping handlers
+│   │   │   ├── service/                 — business logic
+│   │   │   ├── repository/              — Spring Data JPA repositories
+│   │   │   └── store/                   — low-level Redis / Kafka adapters
+│   │   └── resources/
+│   │       ├── application.yml
+│   │       └── db/migration/            — Flyway migrations (V1__init.sql, …)
+│   └── test/java/com/ankitsriv89/<slug>/
+├── web/               — frontend (index.html, styles.css, app.js) — served as static
+├── scripts/           — integration_test.sh, load_test.sh
+├── docs/              — architecture.md, code-flow.md, build-log.md, changelog.md, api.md
+├── Dockerfile
+├── docker-compose.yml
+├── build.gradle
+└── settings.gradle
+```
+
 ### Naming
-- Module path: `github.com/ankitsriv89/<project-slug>`
+- Go module path: `github.com/ankitsriv89/<project-slug>`
+- Java base package: `com.ankitsriv89.<slug-camelcase>`
 - Docker image tag: `<project-slug>:latest`
 - Prometheus metric prefix: `<project_slug_underscored>_`
 

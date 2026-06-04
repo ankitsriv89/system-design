@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15 — Group Chat System</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- LEFT: Concept -->
+  <aside class="panel concept-panel">
+    <h1 class="panel-title">Group Chat System</h1>
+    <p class="panel-sub">Project 15 · Real-Time &amp; Product Systems</p>
+
+    <section class="concept-block">
+      <h2>Architecture</h2>
+      <ul>
+        <li><strong>WebSocket / STOMP</strong> — bidirectional real-time delivery via Spring's message broker</li>
+        <li><strong>Kafka fanout</strong> — messages published to <code>groupchat.messages</code>, consumed and broadcast to all group subscribers</li>
+        <li><strong>PostgreSQL</strong> — durable group, membership, and message history with Flyway migrations</li>
+        <li><strong>Redis presence</strong> — TTL-based online/offline tracking per user</li>
+        <li><strong>Group membership check</strong> — every send/join/read enforces server-side membership before any data is returned</li>
+      </ul>
+    </section>
+
+    <section class="concept-block">
+      <h2>Key Design Decisions</h2>
+      <ul>
+        <li>Messages are sequenced per group via <code>MAX(seq)+1</code> — simple and correct for moderate scale</li>
+        <li>Fanout happens through Kafka so WebSocket nodes are decoupled — any node can receive and broadcast</li>
+        <li>STOMP topic per group: <code>/topic/group/{id}</code> — clients subscribe on join</li>
+        <li>JWT auth at REST boundary; STOMP principal propagated via Spring Security</li>
+      </ul>
+    </section>
+
+    <section class="concept-block">
+      <h2>APIs</h2>
+      <code class="api-list">
+        POST /api/auth/token<br>
+        POST /api/groups<br>
+        GET  /api/groups<br>
+        GET  /api/groups/{id}<br>
+        POST /api/groups/{id}/members<br>
+        DELETE /api/groups/{id}/members/{uid}<br>
+        POST /api/groups/{id}/messages<br>
+        GET  /api/groups/{id}/messages<br>
+        GET  /api/presence?userIds=…<br>
+        WS   /ws  (STOMP)
+      </code>
+    </section>
+  </aside>
+
+  <!-- MIDDLE: Live demo -->
+  <main class="panel demo-panel">
+    <h2 class="panel-title">Live Demo</h2>
+
+    <div class="form-row">
+      <input id="userId" placeholder="Your user ID (e.g. alice)" />
+      <button id="btnConnect">Connect</button>
+    </div>
+
+    <div class="form-row" id="group-controls" style="display:none">
+      <input id="groupName" placeholder="New group name" />
+      <button id="btnCreate">Create Group</button>
+    </div>
+
+    <div class="groups-area" id="groups-area" style="display:none">
+      <div class="groups-header">
+        <span>Groups</span>
+        <select id="groupSelect"><option value="">— select —</option></select>
+      </div>
+
+      <div class="member-row">
+        <input id="memberUserId" placeholder="Add member user ID" />
+        <button id="btnAddMember">Add</button>
+      </div>
+
+      <div class="chat-box" id="chatBox"></div>
+
+      <div class="send-row">
+        <input id="msgInput" placeholder="Type a message…" />
+        <button id="btnSend">Send</button>
+      </div>
+    </div>
+
+    <div class="presence-bar" id="presenceBar"></div>
+  </main>
+
+  <!-- RIGHT: API log -->
+  <aside class="panel log-panel">
+    <h2 class="panel-title">API Log</h2>
+    <div class="log-box" id="logBox"></div>
+    <button class="clear-btn" onclick="document.getElementById('logBox').innerHTML=''">Clear</button>
+  </aside>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

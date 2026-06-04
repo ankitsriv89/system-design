@@ -103,6 +103,11 @@
         reverse_proxy localhost:8095
     }
 
+    # ── Project 15 — Group Chat System (:8096) ────────────────────────────────
+    handle_path /p15/* {
+        reverse_proxy localhost:8096
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {

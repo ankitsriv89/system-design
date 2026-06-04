@@ -1,0 +1,23 @@
+services:
+  groupchat:
+    build: .
+    image: 15-group-chat-system:latest
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-groupchat}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      JWT_SECRET: ${JWT_SECRET:-group-chat-dev-secret-at-least-32-bytes-long}
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
+    networks:
+      - infra
+
+networks:
+  infra:
+    external: true
+    name: infra
