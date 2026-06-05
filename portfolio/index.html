@@ -700,7 +700,7 @@
   .progress-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--green), var(--cyan));
-    width: 28%; /* 14/50 */
+    width: 30%; /* 15/50 */
     box-shadow: 0 0 8px var(--cyan);
     transition: width 1s ease;
   }
@@ -745,11 +745,11 @@
 
     <div class="header-stats">
       <div class="stat">
-        <div class="stat-value" id="live-count">14</div>
+        <div class="stat-value" id="live-count">15</div>
         <div class="stat-label">Live</div>
       </div>
       <div class="stat">
-        <div class="stat-value" style="color:var(--text-dim)">36</div>
+        <div class="stat-value" style="color:var(--text-dim)">35</div>
         <div class="stat-label">Building</div>
       </div>
       <div class="stat">
@@ -828,7 +828,7 @@ const PROJECTS = [
   // Phase 2
   { id:'14', name:'1:1 Chat System',          phase:2, desc:'WebSocket messaging with delivery receipts.',                              stack:['Java','WebSockets','Kafka'],             live:true  },
   { id:'15', name:'Group Chat System',        phase:2, desc:'Fan-out to group members with read tracking.',                            stack:['Java','Kafka'],                          live:false },
-  { id:'16', name:'News Feed System',         phase:2, desc:'Push/pull hybrid feed generation.',                                       stack:['Java','Kafka','Redis'],                  live:false },
+  { id:'16', name:'News Feed System',         phase:2, desc:'Push/pull hybrid feed generation.',                                       stack:['Java','Kafka','Redis'],                  live:true },
   { id:'17', name:'Proximity Service',        phase:2, desc:'Geohash-based nearby search.',                                            stack:['Java','Redis GEO'],                      live:false },
   { id:'18', name:'Instagram Clone',          phase:2, desc:'Photo/video upload, feed, and CDN.',                                      stack:['Java','S3','Kafka'],                     live:false },
   { id:'19', name:'Twitter/X Clone',          phase:2, desc:'Timeline fanout, trending, search.',                                     stack:['Java','Kafka','OpenSearch'],             live:false },

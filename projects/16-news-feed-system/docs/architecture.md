@@ -18,81 +18,180 @@ they follow, ranked rather than purely chronological, at a scale where a naive
 This project uses a **hybrid**. Normal authors fan out *on write*; authors above a
 follower threshold (`newsfeed.fanout.celebrity-threshold`, default 1000) are
 *not* fanned out — their posts are pulled at read time and merged in. This caps
-write amplification while keeping the common-case read to a single Redis call.
+worst-case write amplification while keeping reads cheap for the common case.
+
+---
+
+## System diagram
+
+```mermaid
+graph TD
+    Browser["Browser / Demo UI"]
+    API["Spring Boot API :8097"]
+    Auth["JwtAuthFilter"]
+    PostCtl["PostController"]
+    FollowCtl["FollowController"]
+    FeedCtl["FeedController"]
+    PostSvc["PostService"]
+    FollowSvc["FollowService"]
+    FeedSvc["FeedService"]
+    FanoutSvc["FanoutService (KafkaListener)"]
+    RankingSvc["RankingService"]
+    EventPub["EventPublisher"]
+    PostRepo["PostRepository (JPA)"]
+    FollowRepo["FollowRepository (JPA)"]
+    TimelineStore["TimelineStore (Redis ZSET)"]
+    PG[("PostgreSQL\nposts + follows")]
+    Redis[("Redis\nfeed:{userId} ZSETs")]
+    Kafka[["Kafka\nnewsfeed.events"]]
+    Prom["Prometheus /actuator/prometheus"]
+    Grafana["Grafana"]
+
+    Browser -->|JWT| Auth
+    Auth --> PostCtl
+    Auth --> FollowCtl
+    Auth --> FeedCtl
+
+    PostCtl --> PostSvc
+    PostSvc --> PostRepo --> PG
+    PostSvc -->|afterCommit| EventPub --> Kafka
+
+    FollowCtl --> FollowSvc --> FollowRepo --> PG
+    FollowCtl -->|backfill| FeedSvc
+
+    FeedCtl --> FeedSvc
+    FeedSvc --> TimelineStore --> Redis
+    FeedSvc --> PostRepo
+    FeedSvc --> FollowSvc
+    FeedSvc --> RankingSvc
+
+    Kafka --> FanoutSvc
+    FanoutSvc --> FollowSvc
+    FanoutSvc --> TimelineStore
+    FanoutSvc --> RankingSvc
+
+    API --> Prom --> Grafana
+```
+
+---
+
+## Happy-path sequence: user posts, follower reads
+
+```mermaid
+sequenceDiagram
+    participant Alice
+    participant API
+    participant PG as PostgreSQL
+    participant Kafka
+    participant Fanout as FanoutService
+    participant Redis
+    participant Bob
+
+    Alice->>API: POST /v1/posts {"body":"hello"}
+    API->>PG: INSERT INTO posts (author_id, body, created_at)
+    PG-->>API: post row (id=42)
+    API-->>Alice: 201 Created {id:42, ...}
+    Note over API: afterCommit callback fires
+    API->>Kafka: produce post.created {postId:42, authorId:alice}
+
+    Kafka->>Fanout: consume post.created
+    Fanout->>PG: followerCount("alice") → 5 (below threshold)
+    Fanout->>PG: followersOf("alice") → [bob, carol, ...]
+    Fanout->>Redis: ZADD feed:bob  score  "42"
+    Fanout->>Redis: ZADD feed:carol score "42"
+
+    Bob->>API: GET /v1/feed
+    API->>Redis: ZREVRANGEWITHSCORES feed:bob 0 59
+    Redis-->>API: [(42, 0.98), ...]
+    API->>PG: SELECT * FROM posts WHERE id IN (42, ...)
+    API-->>Bob: [{postId:42, authorId:alice, body:"hello", score:0.98, source:"materialized"}]
+```
+
+---
 
 ## Components
 
-```
-                 ┌────────────┐   POST /v1/posts
-   demo UI ─────▶│  API tier  │──────────────────┐
-   (web/)        │ (Spring)   │                  │ 1. commit to Postgres
-                 └─────┬──────┘                  ▼
-                       │                    ┌──────────┐
-                       │ 2. after-commit    │ Postgres │  posts, follows
-                       │    publish event   │ (source  │  (durable truth)
-                       ▼                    │ of truth)│
-                 ┌───────────┐              └────┬─────┘
-                 │   Kafka   │ post.created      │ read-path pull
-                 │ newsfeed. │                   │ (celebrities, backfill)
-                 │  events   │                   │
-                 └─────┬─────┘                   │
-                       │ 3. consume              │
-                       ▼                         │
-                 ┌───────────┐  ZADD             │
-                 │  Fanout   │──────────┐        │
-                 │  worker   │          ▼        ▼
-                 └───────────┘     ┌─────────────────┐
-                                   │      Redis      │ feed:{user} ZSETs
-                 GET /v1/feed ◀────│ (materialized   │ member=postId
-                                   │   timelines)    │ score=rank
-                                   └─────────────────┘
-```
+### API layer
+- **AuthController** — demo-mode JWT mint (`/api/auth/token`). No password store;
+  tutorial scope only.
+- **PostController** — create (`POST /v1/posts`) and soft-delete
+  (`DELETE /v1/posts/{id}`). Validates body length ≤ 1000 chars.
+- **FollowController** — `POST /v1/follows`; on success, triggers a timeline
+  backfill so the new followee's history appears immediately.
+- **FeedController** — `GET /v1/feed`, `POST /v1/feed/backfill`,
+  `GET /v1/feed/stats`.
 
-- **API tier** — Spring Boot REST. JWT auth at the boundary (demo-mode token
-  minting; no password store). Validates input, writes posts/follows.
-- **PostgreSQL** — durable source of truth for `posts` and `follows`. A post is
-  committed here *before* any event is published.
-- **Kafka** (`newsfeed.events`, 6 partitions, keyed by `authorId`) — carries
-  `post.created`, decoupling the synchronous write from async materialization.
-- **Fanout worker** (`FanoutService`, `@KafkaListener`) — materializes each post
-  into follower timelines, or skips celebrities.
-- **Redis** — one sorted set per user (`feed:{userId}`): member = postId,
-  score = ranking score. Trimmed to `max-cached-items` (default 800).
-- **Ranking** (`RankingService`) — time-decay score `0.5^(age/halfLife)`.
+### Domain layer
+- **PostService** — `@Transactional` write + `afterCommit` Kafka publish (durable
+  before fanout). Soft-delete with author guard.
+- **FollowService** — idempotent follow (duplicate follow is a no-op). Provides
+  `followersOf`, `followeesOf`, `followerCount` for the fanout and read paths.
+- **FeedService** — hybrid feed assembly: merge materialized ZSET + read-time
+  celebrity pulls, filter soft-deleted, re-score, rank, page.
+- **FanoutService** — `@KafkaListener` that fans a `post.created` event out to
+  every follower's Redis ZSET, unless the author exceeds the celebrity threshold.
+- **RankingService** — time-decay score = `0.5^(ageHours / halfLifeHours)`.
+  Score halves every `half-life-hours` (default 12 h). Stored in the ZSET so the
+  timeline is always in ranked order; re-scored at read time for freshness.
 
-## Consistency model
+### Storage layer
+- **PostgreSQL** — durable source of truth. Tables: `posts` (with `deleted` flag,
+  composite index `(author_id, created_at DESC)`) and `follows` (unique constraint
+  + indexes on both directions of the follow edge). Schema managed by Flyway.
+- **Redis sorted sets** — one ZSET per user: `feed:{userId}`, member = postId,
+  score = ranking score. Capped at `max-cached-items` (default 800).
+- **Kafka topic `newsfeed.events`** — carries `PostCreatedEvent` records. Keyed
+  by `authorId` to maintain per-author ordering on one partition.
 
-- **Strongly consistent:** post creation and the follow graph (single Postgres
-  transaction). Reading a post you just created back from `/v1/posts` is durable.
-- **Eventually consistent:** the home feed. After a post commits, fanout happens
-  asynchronously, so a follower's materialized timeline converges within the
-  fanout latency (sub-second locally). This is the deliberate tradeoff that keeps
-  the write path fast.
-- **Durable-before-fanout:** the `post.created` event is published from an
-  `afterCommit` transaction callback, so we never fan out a post that rolled back.
-
-## Failure modes addressed
-
-| Failure mode | Handling |
+### Observability
+| Metric | Description |
 |---|---|
-| **Celebrity fanout** | Authors over threshold are skipped on write; pulled on read. Metric: `newsfeed_celebrity_skips_total`. |
-| **Stale feed** | Backfill (`POST /v1/feed/backfill`, and automatically on follow) rebuilds a timeline from the source of truth. |
-| **Deleted post remains in feed** | Soft-delete + lazy filtering: the feed assembler resolves every candidate post and drops `deleted=true`, so a stale ZSET entry never surfaces a deleted post. |
-| **Duplicate events / at-least-once Kafka** | Fanout is idempotent — re-processing re-issues ZADD with the same member/score, a no-op. |
-| **Redis loss** | Timelines are a cache; backfill reconstructs them from Postgres. |
+| `newsfeed_posts_created_total` | Posts durably committed |
+| `newsfeed_fanout_writes_total` | Timeline entries materialized on write |
+| `newsfeed_celebrity_skips_total` | Posts skipped from write fanout (celebrity) |
+| `newsfeed_read_path_pulls_total` | Posts pulled at read time (celebrity pull) |
+| `newsfeed_feed_reads_total` | Home feed requests served |
+| `newsfeed_feed_cache_hits_total` | Feed served from non-empty Redis timeline |
+| `newsfeed_feed_cache_misses_total` | Feed where Redis timeline was empty |
+| `newsfeed_feed_build_seconds` | Latency histogram: assembling a home feed page |
+| `newsfeed_fanout_seconds` | Latency histogram: one fanout event |
 
-## Capacity sketch
+---
 
-- Write amplification per non-celebrity post = follower count (bounded by
-  threshold). A post by a 1000-follower user = 1000 ZADDs.
-- Redis memory ≈ users × max-cached-items × (postId + score) ≈ users × 800 × ~24B.
-- Read path = 1 Redis ZREVRANGE + (for celebrity followees) 1 indexed Postgres
-  query, then an in-memory merge/sort of a few hundred candidates.
+## Data model
 
-## Scaling levers (in order)
+```sql
+-- Durable source of truth
+posts  (id BIGINT PK, author_id VARCHAR(128), body VARCHAR(1000),
+        created_at TIMESTAMPTZ, deleted BOOLEAN DEFAULT FALSE)
+follows (id BIGINT PK, follower_id VARCHAR(128), followee_id VARCHAR(128),
+         created_at TIMESTAMPTZ, UNIQUE(follower_id, followee_id))
 
-1. Add fanout-worker instances (Kafka consumer group scales horizontally by
-   partition) before touching the API tier.
-2. Pipeline/shard the per-follower ZADDs in `TimelineStore.pushMany`.
-3. Tune the celebrity threshold from real follower-distribution data.
-4. Add engagement signals to `RankingService` once recency-only is the bottleneck.
+-- Materialized read model (Redis)
+ZSET feed:{userId}   member=postId  score=rankingScore
+```
+
+---
+
+## Capacity estimates
+
+| Dimension | Estimate | Basis |
+|---|---|---|
+| Write throughput | ~500 posts/s | 50M DAU × 0.01 posts/day / 86 400 s |
+| Fanout writes | ~50 000 ZADD/s | avg 100 followers × 500 posts/s |
+| Feed reads | ~6 000 reads/s | 50M DAU × 10 reads/day / 86 400 s |
+| PostgreSQL storage | ~30 GB/year | 500 posts/s × 500 B avg × 86 400 × 365 |
+| Redis memory | ~3 GB | 500K active users × 800 items × 8 B per entry |
+| Kafka retention | ~50 GB | 500 events/s × 1 KB × 86 400 s × 1 day |
+
+---
+
+## Failure modes and mitigations
+
+| Failure | Mitigation in this build |
+|---|---|
+| Celebrity fanout storm | Authors above threshold skipped on write; pulled at read time |
+| Stale feed after Redis loss | Backfill API reconstructs timeline from PostgreSQL |
+| Deleted post remains in feed | Soft-delete flag; filtered lazily at read time |
+| Ranking job failure | Score is recomputed at read time from `createdAt`; ZSET score corrected |
+| Duplicate Kafka delivery | ZADD is idempotent; re-processing same event is safe no-op |

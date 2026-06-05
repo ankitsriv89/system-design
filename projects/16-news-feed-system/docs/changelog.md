@@ -1,24 +1,52 @@
-# Changelog — News Feed System
+# Changelog — News Feed System (Project 16)
 
-## 0.1.0 — initial implementation
+All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [0.1.0] — 2026-06-05
 
 ### Added
-- Post and follow domain model (PostgreSQL via JPA + Flyway), with soft-delete
-  on posts and unique/directional indexes on follows.
-- Durable write path: `POST /v1/posts` commits to Postgres, then publishes
-  `post.created` to Kafka from an after-commit callback.
-- Hybrid fanout: `FanoutService` Kafka worker materializes posts into follower
-  Redis timelines (sorted sets), skipping authors above the celebrity threshold.
-- Ranked read path: `GET /v1/feed` merges materialized timeline with read-time
-  celebrity pulls, filters deleted posts, and ranks by time-decay score.
-- `POST /v1/follows` with automatic timeline backfill; `POST /v1/feed/backfill`
-  and `GET /v1/feed/stats` operator controls.
-- Time-decay ranking (`RankingService`, true half-life formula).
-- Prometheus metrics (`newsfeed_` prefix): posts, fanout writes, celebrity skips,
-  read-path pulls, feed reads, cache hit/miss, fanout and feed-build timers.
-- Single-page demo UI (XSS-safe) and `scripts/integration_test.sh`.
-- Unit tests for ranking (`RankingServiceTest`).
 
-### Notes
-- Port 8097, Caddy path `/p16/`. Connects to shared `infra` network
-  (Postgres/Redis/Kafka); DB provisioned via `infra/initdb/16_newsfeed.sql`.
+- **Post write path** — `PostService.create()` commits a post to PostgreSQL inside
+  a `@Transactional` method, then publishes a `post.created` event to Kafka via an
+  `afterCommit` hook. Guarantees the source of truth leads the async pipeline.
+- **Soft-delete** — `DELETE /v1/posts/{id}` sets `deleted=true`; the read path
+  filters deleted posts lazily. Only the author may delete (`403` otherwise).
+- **Follow graph** — `FollowService` with idempotent `follow()` (duplicate is
+  a no-op). Provides `followersOf`, `followeesOf`, and `followerCount` queries
+  to serve both the fanout worker and the read path.
+- **Fanout worker** — `FanoutService` `@KafkaListener` materializes posts into
+  follower home timelines (Redis ZSETs) using per-follower ZADDs. Celebrity
+  authors (follower count above configurable threshold, default 1000) are skipped
+  — their posts are pulled at read time.
+- **Hybrid feed read** — `FeedService.homeFeed()` merges two sources: the
+  materialized Redis timeline (fanout-on-write) and a read-time pull for celebrity
+  followees (fanout-on-read). De-duplicates, re-scores, sorts descending, pages.
+- **Time-decay ranking** — `RankingService` computes `score = 0.5^(age/halfLife)`.
+  Half-life is configurable (`newsfeed.ranking.half-life-hours`, default 12 h).
+  Score is stored in the ZSET and recomputed at read time for freshness.
+- **Timeline store** — `TimelineStore` over Redis sorted sets. Supports `push`,
+  `pushMany`, `topN`, `replace` (backfill), and `remove`. Trims to
+  `max-cached-items` (default 800) per user.
+- **Backfill** — `POST /v1/feed/backfill` and automatic backfill on follow:
+  reconstructs a user's timeline from recent non-celebrity followee posts in
+  PostgreSQL.
+- **Timeline stats** — `GET /v1/feed/stats` returns current Redis ZSET cardinality
+  for the authenticated user.
+- **Demo auth** — `POST /api/auth/token` mints a JWT for any userId (no password
+  verification). Tutorial scope only.
+- **Flyway schema** — `V1__init.sql` creates `posts` and `follows` with bi-directional
+  follow indexes and an `(author_id, created_at DESC)` composite index on `posts`.
+- **Prometheus metrics** — golden signals plus fanout, celebrity-skip, cache
+  hit/miss counters and timers, all under the `newsfeed_` prefix.
+- **Web UI** — single-page demo: sign in, compose posts, follow users, view ranked
+  feed with source/score badges, delete own posts, trigger backfill.
+- **Unit tests** — `RankingServiceTest` verifying half-life semantics (4 tests).
+- **Integration test script** — `scripts/integration_test.sh` covering the full
+  user workflow: auth → follow → post → fanout → feed → delete → 403/401.
+
+### Fixed
+
+- **Ranking half-life formula** — initial formula `exp(-age/τ)` gave a score of
+  `0.632` at age = `halfLifeHours` rather than `0.5`. Corrected to
+  `exp(-ln2 · age / halfLife)` so the configured half-life is literally accurate.
+  Caught by `RankingServiceTest.scoreHalvesAtHalfLife`.
