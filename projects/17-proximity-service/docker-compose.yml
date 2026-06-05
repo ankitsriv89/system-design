@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  proximity-service:
+    build: .
+    image: proximity-service:latest
+    container_name: proximity-service
+    ports:
+      - "8098:8098"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: proximity
+      POSTGRES_USER: proximity
+      POSTGRES_PASSWORD: proximity
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8098/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  infra:
+    external: true

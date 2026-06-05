@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proximity Service — System Design #17</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <span class="badge">17</span>
+    <div>
+      <h1>Proximity Service</h1>
+      <p class="subtitle">Find nearby entities with low-latency geo queries · Redis GEO · PostGIS · Kafka</p>
+    </div>
+  </div>
+</header>
+
+<main class="three-panel">
+
+  <!-- LEFT: Concept -->
+  <section class="panel concept-panel">
+    <h2>How It Works</h2>
+
+    <div class="concept-block">
+      <h3>Architecture</h3>
+      <pre class="arch-diagram">
+┌─────────────────────┐
+│     Demo UI         │
+│  (update / query)   │
+└────────┬────────────┘
+         │ HTTP REST
+┌────────▼────────────┐
+│   Spring Boot API   │
+│  POST /v1/locations │
+│  GET  /v1/nearby    │
+│  DEL  /v1/locations │
+└──┬──────────┬───────┘
+   │          │
+┌──▼──┐   ┌──▼──────┐
+│Redis│   │Postgres │
+│ GEO │   │PostGIS  │
+│(hot)│   │(durable)│
+└─────┘   └─────────┘
+         │
+┌────────▼────────────┐
+│       Kafka         │
+│ location.updated    │
+│ nearby.queried      │
+│ location.expired    │
+└─────────────────────┘
+      </pre>
+    </div>
+
+    <div class="concept-block">
+      <h3>Key Concepts</h3>
+      <ul class="concept-list">
+        <li><strong>Geohash</strong> — encode lat/lng to a hierarchical string; nearby cells share prefix</li>
+        <li><strong>Redis GEO</strong> — GEOADD/GEORADIUS for O(N+log M) hot lookups, TTL via sorted-set score</li>
+        <li><strong>PostGIS GIST index</strong> — durable spatial queries, history, analytics</li>
+        <li><strong>Location TTL</strong> — stale entries evicted after 5 min; privacy by default</li>
+        <li><strong>Visibility</strong> — PUBLIC / FRIENDS / HIDDEN; HIDDEN users never appear in results</li>
+        <li><strong>Kafka fanout</strong> — downstream consumers react to location events asynchronously</li>
+      </ul>
+    </div>
+
+    <div class="concept-block">
+      <h3>Latency Targets</h3>
+      <table class="slo-table">
+        <tr><th>Path</th><th>p50</th><th>p95</th><th>p99</th></tr>
+        <tr><td>Location update</td><td>&lt;5ms</td><td>&lt;15ms</td><td>&lt;30ms</td></tr>
+        <tr><td>Nearby query</td><td>&lt;10ms</td><td>&lt;25ms</td><td>&lt;50ms</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- CENTER: Interactive map / demo -->
+  <section class="panel viz-panel">
+    <h2>Live Demo</h2>
+
+    <div class="controls">
+      <div class="control-row">
+        <label>User ID</label>
+        <input id="userId" type="text" value="alice" placeholder="alice">
+      </div>
+      <div class="control-row">
+        <label>Lat</label>
+        <input id="lat" type="number" value="37.7749" step="0.0001">
+        <label>Lng</label>
+        <input id="lng" type="number" value="-122.4194" step="0.0001">
+      </div>
+      <div class="btn-row">
+        <button id="btnUpdate" class="btn btn-primary">Update Location</button>
+        <button id="btnSeed" class="btn btn-secondary">Seed 5 Users</button>
+      </div>
+    </div>
+
+    <div class="map-container">
+      <canvas id="mapCanvas" width="460" height="320"></canvas>
+      <div id="mapHint">Points appear here after seeding users</div>
+    </div>
+
+    <div class="query-controls">
+      <div class="control-row">
+        <label>Query User</label>
+        <input id="queryUserId" type="text" value="alice">
+        <label>Radius (m)</label>
+        <input id="radius" type="number" value="2000" min="100" max="50000">
+      </div>
+      <button id="btnNearby" class="btn btn-primary" style="width:100%">Find Nearby</button>
+    </div>
+
+    <div id="nearbyResult" class="nearby-result hidden">
+      <h3>Nearby Users</h3>
+      <ul id="nearbyList"></ul>
+    </div>
+  </section>
+
+  <!-- RIGHT: API log -->
+  <section class="panel log-panel">
+    <div class="log-header">
+      <h2>API Log</h2>
+      <button id="btnClear" class="btn btn-ghost">Clear</button>
+    </div>
+    <div id="apiLog" class="api-log"></div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

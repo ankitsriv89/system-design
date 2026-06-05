@@ -1,0 +1,76 @@
+server:
+  port: 8098
+
+spring:
+  application:
+    name: proximity-service
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:5432/${POSTGRES_DB:proximity}
+    username: ${POSTGRES_USER:proximity}
+    password: ${POSTGRES_PASSWORD:proximity}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+    consumer:
+      group-id: proximity-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.ankitsriv89.proximityservice.*"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+proximity:
+  geo:
+    redis-key: "geo:locations"
+    default-radius-m: 1000
+    max-radius-m: 50000
+  location:
+    ttl-seconds: 300
+  kafka:
+    topics:
+      location-updated: location.updated
+      nearby-queried: nearby.queried
+      location-expired: location.expired
+
+logging:
+  level:
+    com.ankitsriv89.proximityservice: DEBUG
+  pattern:
+    console: "%d{ISO8601} [%thread] %-5level %logger{36} request_id=%X{requestId} - %msg%n"

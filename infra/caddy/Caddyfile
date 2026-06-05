@@ -113,6 +113,11 @@
         reverse_proxy localhost:8097
     }
 
+    # ── Project 17 — Proximity Service (:8098) ────────────────────────────────
+    handle_path /p17/* {
+        reverse_proxy localhost:8098
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -161,6 +166,7 @@
   <a href="/p13/"><div class="num">13</div><div class="name">Message Queue</div><div class="tag">Partitions · Visibility timeout · DLQ · At-least-once · Go</div></a>
   <a href="/p14/"><div class="num">14</div><div class="name">1:1 Chat System</div><div class="tag">WebSocket · STOMP · Kafka · Redis presence · Java</div></a>
   <a href="/p16/"><div class="num">16</div><div class="name">News Feed System</div><div class="tag">Hybrid fanout · Redis ZSET · Kafka · Time-decay ranking · Java</div></a>
+  <a href="/p17/"><div class="num">17</div><div class="name">Proximity Service</div><div class="tag">Redis GEO · PostGIS · Geohash · Kafka · Java</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>
