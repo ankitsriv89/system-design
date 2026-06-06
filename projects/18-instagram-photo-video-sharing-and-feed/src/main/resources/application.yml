@@ -55,7 +55,7 @@ management:
         include: health,info,prometheus,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
   metrics:
     export:
       prometheus:
@@ -69,6 +69,7 @@ instagram:
       access-key: ${MINIO_ACCESS_KEY:instagram}
       secret-key: ${MINIO_SECRET_KEY:instagram123}
       bucket: ${MINIO_BUCKET:media}
+    presign-expiry-seconds: 900
     public-base-url: ${MEDIA_PUBLIC_BASE_URL:/p18/media}
     # Variants generated asynchronously by the processing worker.
     variants:
@@ -78,7 +79,9 @@ instagram:
   feed:
     redis-key-prefix: "feed:"
     max-size: 500
-    fanout-follower-threshold: 10000   # above this, pull-model for "celebrity" accounts
+    page-size: 20
+    half-life-hours: 12                 # time-decay ranking half-life
+    fanout-follower-threshold: 10000    # above this, pull-model for "celebrity" accounts
   kafka:
     topics:
       media-uploaded: media.uploaded

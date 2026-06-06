@@ -31,6 +31,9 @@ dependencies {
     // S3-compatible object storage (MinIO origin; Cloudflare CDN in front for prod)
     implementation 'io.minio:minio:8.5.10'
 
+    // Image variant generation (thumbnail/small/medium) — pure-Java, no native deps
+    implementation 'net.coobird:thumbnailator:0.4.20'
+
     runtimeOnly 'org.postgresql:postgresql'
 
     compileOnly 'org.projectlombok:lombok'

@@ -92,6 +92,7 @@ case "${STACK_NAME}" in
       "10-notification-system"
       "14-one-to-one-chat-system"
       "16-news-feed-system"
+      "18-instagram-photo-video-sharing-and-feed"
     )
     ;;
   other)

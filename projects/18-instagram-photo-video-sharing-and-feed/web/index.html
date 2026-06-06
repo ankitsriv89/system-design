@@ -72,12 +72,46 @@
     </div>
   </section>
 
-  <!-- MIDDLE: Visualization -->
+  <!-- MIDDLE: Visualization + live demo -->
   <section class="panel viz-panel">
-    <h2>Demo</h2>
-    <div id="viz-placeholder" class="viz-placeholder">
-      <p>Upload + feed demo wired in during build milestones.</p>
+    <h2>Live Demo</h2>
+
+    <div class="controls">
+      <label>Act as user
+        <select id="userId">
+          <option value="1">1 · alice</option>
+          <option value="2">2 · bob</option>
+          <option value="3">3 · carol</option>
+          <option value="4">4 · dave</option>
+        </select>
+      </label>
+      <button id="btn-run">Upload + Post</button>
+      <button id="btn-feed">Load Feed</button>
+      <span class="follow-row">
+        follow user
+        <input id="followId" type="number" min="1" value="2" style="width:48px">
+        <button id="btn-follow">Follow</button>
+      </span>
     </div>
+
+    <!-- Pipeline stages light up as the async flow progresses -->
+    <div class="pipeline">
+      <div class="stage" id="stage-upload" data-state="idle"><span>1</span>begin upload<br><small>presign</small></div>
+      <div class="arrow">→</div>
+      <div class="stage" id="stage-store" data-state="idle"><span>2</span>PUT bytes<br><small>MinIO</small></div>
+      <div class="arrow">→</div>
+      <div class="stage" id="stage-process" data-state="idle"><span>3</span>variants<br><small>worker</small></div>
+      <div class="arrow">→</div>
+      <div class="stage" id="stage-post" data-state="idle"><span>4</span>create post<br><small>fanout</small></div>
+      <div class="arrow">→</div>
+      <div class="stage" id="stage-feed" data-state="idle"><span>5</span>feed<br><small>ZSET</small></div>
+    </div>
+
+    <h3>Generated variants</h3>
+    <div id="variants" class="variants"></div>
+
+    <h3>Home feed</h3>
+    <div id="feed" class="feed"></div>
   </section>
 
   <!-- RIGHT: API log -->
