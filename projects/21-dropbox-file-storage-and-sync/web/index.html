@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>21 — Dropbox File Storage & Sync</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="badge">21</span>
+      <h1>Dropbox File Storage &amp; Sync</h1>
+      <span class="stack-tag">Java / Spring Boot · PostgreSQL · MinIO · Kafka · Redis</span>
+    </div>
+  </header>
+
+  <main class="panels">
+
+    <!-- LEFT — Concept -->
+    <section class="panel" id="concept-panel">
+      <h2>System Concepts</h2>
+
+      <div class="concept-block">
+        <h3>Metadata Tree vs Blob Storage</h3>
+        <p>Files are stored as two separate concerns: <strong>metadata</strong> (name, path, owner, versions) in PostgreSQL, and <strong>blob data</strong> in object storage (MinIO/S3). This separation lets the database stay small and fast while blobs scale independently.</p>
+      </div>
+
+      <div class="concept-block">
+        <h3>Chunked Upload Flow</h3>
+        <div class="flow-diagram">
+          <div class="flow-step">Client</div><div class="flow-arrow">→</div>
+          <div class="flow-step">POST /files<br><small>(multipart)</small></div><div class="flow-arrow">→</div>
+          <div class="flow-step">MinIO<br><small>(object store)</small></div>
+          <br>
+          <div class="flow-step" style="opacity:0">.</div><div class="flow-arrow" style="opacity:0">→</div>
+          <div class="flow-step">PostgreSQL<br><small>(FileVersion)</small></div><div class="flow-arrow">→</div>
+          <div class="flow-step">Kafka<br><small>(file.version_added)</small></div>
+        </div>
+      </div>
+
+      <div class="concept-block">
+        <h3>Sync Cursor Model</h3>
+        <p>Each device maintains a <code>sync_cursor</code> — a pointer to the last change event it consumed. On <code>GET /sync</code>, the server returns all events since that cursor. Redis caches cursors to avoid hitting the DB on every poll.</p>
+        <div class="cursor-vis">
+          <div class="event-rail">
+            <div class="event-box seen">ev 1<br><small>created</small></div>
+            <div class="event-box seen">ev 2<br><small>version+</small></div>
+            <div class="event-box current">← cursor</div>
+            <div class="event-box new">ev 3<br><small>deleted</small></div>
+            <div class="event-box new">ev 4<br><small>version+</small></div>
+          </div>
+          <div class="cursor-label">Device polls → receives ev 3, ev 4 → cursor advances</div>
+        </div>
+      </div>
+
+      <div class="concept-block">
+        <h3>Conflict Resolution Strategy</h3>
+        <ul>
+          <li><strong>Last-write wins</strong> for simple edits (new version created)</li>
+          <li><strong>Checksum dedup</strong>: identical content → no new version stored</li>
+          <li><strong>Branched versions</strong>: concurrent writes from different devices create sibling versions; client UI resolves</li>
+        </ul>
+      </div>
+
+      <div class="concept-block">
+        <h3>Scale Levers</h3>
+        <ul>
+          <li>Partition Kafka topic by <code>owner_id</code> for parallelism</li>
+          <li>Redis caches hot folder listings (TTL: 30s)</li>
+          <li>S3 multipart API for files &gt; 100 MB</li>
+          <li>Read replicas for listing-heavy workloads</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- MIDDLE — Live Demo -->
+    <section class="panel" id="demo-panel">
+      <h2>Live Demo</h2>
+
+      <div class="demo-controls">
+        <label>Owner ID
+          <input id="owner-id" type="text" value="demo-user" />
+        </label>
+        <label>Device ID
+          <input id="device-id" type="text" value="browser-device-1" />
+        </label>
+        <label>API Key
+          <input id="api-key" type="password" value="demo-secret" />
+        </label>
+      </div>
+
+      <div class="demo-section">
+        <h3>File Tree</h3>
+        <div class="tree-toolbar">
+          <button id="btn-refresh">↻ Refresh</button>
+          <button id="btn-new-folder">+ Folder</button>
+          <button id="btn-upload">↑ Upload File</button>
+          <input id="file-input" type="file" style="display:none">
+        </div>
+        <div id="file-tree" class="file-tree">
+          <span class="tree-empty">Click Refresh to load</span>
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h3>Sync Feed <span id="cursor-badge" class="cursor-badge">cursor: 0</span></h3>
+        <button id="btn-poll">Poll /sync</button>
+        <div id="sync-feed" class="sync-feed">
+          <span class="tree-empty">No events yet</span>
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h3>System Stats</h3>
+        <div id="stats-grid" class="stats-grid">
+          <div class="stat-box"><div class="stat-label">Files</div><div class="stat-val" id="stat-files">—</div></div>
+          <div class="stat-box"><div class="stat-label">Folders</div><div class="stat-val" id="stat-folders">—</div></div>
+          <div class="stat-box"><div class="stat-label">Events</div><div class="stat-val" id="stat-events">—</div></div>
+          <div class="stat-box"><div class="stat-label">Cursor</div><div class="stat-val" id="stat-cursor">0</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT — API Log -->
+    <section class="panel" id="log-panel">
+      <h2>API Log</h2>
+      <div class="log-toolbar">
+        <button id="btn-clear-log">Clear</button>
+        <label class="toggle-label">
+          <input id="toggle-auto-poll" type="checkbox"> Auto-poll (5s)
+        </label>
+      </div>
+      <div id="api-log" class="api-log"></div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
