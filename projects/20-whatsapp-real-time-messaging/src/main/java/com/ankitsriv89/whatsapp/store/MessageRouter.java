@@ -93,13 +93,19 @@ public class MessageRouter {
             return;
         }
 
-        // Push receipt state back to all connected sessions; clients filter by messageId.
+        // Push receipt state only to devices belonging to chat participants.
+        // participantUserIds carried in the event so we don't need an extra DB round-trip.
         WsEnvelope envelope = new WsEnvelope("receipt", Map.of(
                 "messageId", event.messageId(),
                 "deviceId", event.deviceId(),
                 "state", event.state()
         ));
-        sessionStore.allSessions().keySet().forEach(deviceId ->
-                sessionHandler.push(deviceId, envelope));
+        if (event.participantUserIds() == null || event.participantUserIds().isEmpty()) return;
+        for (Long userId : event.participantUserIds()) {
+            List<Device> userDevices = devices.findByUserId(userId);
+            for (Device device : userDevices) {
+                sessionHandler.push(device.getId(), envelope);
+            }
+        }
     }
 }

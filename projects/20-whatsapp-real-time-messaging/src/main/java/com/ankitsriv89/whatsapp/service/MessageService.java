@@ -50,6 +50,9 @@ public class MessageService {
 
     @Transactional
     public MessageResponse send(String senderUsername, SendMessageRequest req) {
+        // Verify the sender is a participant before writing anything.
+        assertParticipant(senderUsername, req.chatId());
+
         AppUser sender = users.findByUsername(senderUsername)
                 .orElseThrow(() -> new IllegalStateException("Sender not found"));
 

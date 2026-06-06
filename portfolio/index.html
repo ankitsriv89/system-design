@@ -700,7 +700,7 @@
   .progress-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--green), var(--cyan));
-    width: 34%; /* 17/50 */
+    width: 36%; /* 18/50 */
     box-shadow: 0 0 8px var(--cyan);
     transition: width 1s ease;
   }
@@ -745,11 +745,11 @@
 
     <div class="header-stats">
       <div class="stat">
-        <div class="stat-value" id="live-count">17</div>
+        <div class="stat-value" id="live-count">18</div>
         <div class="stat-label">Live</div>
       </div>
       <div class="stat">
-        <div class="stat-value" style="color:var(--text-dim)">33</div>
+        <div class="stat-value" style="color:var(--text-dim)">32</div>
         <div class="stat-label">Building</div>
       </div>
       <div class="stat">
@@ -832,7 +832,7 @@ const PROJECTS = [
   { id:'17', name:'Proximity Service',        phase:2, desc:'Geohash-based nearby search.',                                            stack:['Java','Redis GEO'],                      live:true  },
   { id:'18', name:'Instagram Clone',          phase:2, desc:'Photo/video upload pipeline, hybrid-fanout feed, MinIO + CDN.',             stack:['Java','MinIO','Kafka','Redis'],          live:true  },
   { id:'19', name:'Twitter/X Timeline',       phase:2, desc:'Hybrid fanout timeline, celebrity read-path, full-text search & trends.', stack:['Java','Kafka','Redis','OpenSearch'],     live:false },
-  { id:'20', name:'WhatsApp Clone',           phase:2, desc:'Encrypted real-time messaging at scale.',                                stack:['Java','Netty','Kafka'],                  live:false },
+  { id:'20', name:'WhatsApp Clone',           phase:2, desc:'Encrypted real-time messaging at scale.',                                stack:['Java','WebSocket','Kafka','Redis'],       live:true  },
   { id:'21', name:'Dropbox Clone',            phase:2, desc:'File sync with delta uploads.',                                          stack:['Java','S3','Kafka'],                     live:false },
   { id:'22', name:'Ticket Booking',           phase:2, desc:'Distributed seat locking and payment flow.',                             stack:['Java','PostgreSQL','Redis'],             live:false },
   { id:'23', name:'E-commerce Platform',      phase:2, desc:'Product catalog, cart, orders, payments.',                              stack:['Java','Kafka','OpenSearch'],             live:false },
