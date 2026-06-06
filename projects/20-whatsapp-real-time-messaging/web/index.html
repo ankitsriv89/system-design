@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp Real-Time Messaging — System Design Demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Auth screen -->
+  <div id="auth-screen" class="screen">
+    <div class="auth-card">
+      <h1>WhatsApp Demo</h1>
+      <p class="sub">Project 20 · E2EE · WebSocket · Kafka · Redis</p>
+      <div class="tabs">
+        <button class="tab active" data-tab="login">Sign in</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
+      <form id="auth-form">
+        <input id="auth-username" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="auth-password" type="password" placeholder="Password (min 8 chars)" autocomplete="current-password" required />
+        <button type="submit" id="auth-btn">Sign in</button>
+      </form>
+      <p id="auth-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="screen hidden">
+    <!-- Left: sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span id="me-label">…</span>
+        <div class="sidebar-actions">
+          <button id="new-group-btn" title="New group">&#x2295;</button>
+          <button id="logout-btn" title="Sign out">&#x2715;</button>
+        </div>
+      </div>
+
+      <div class="search-bar">
+        <input id="chat-search" type="text" placeholder="Search or start new chat (username)" />
+        <button id="start-dm-btn">Go</button>
+      </div>
+
+      <div id="chat-list"></div>
+
+      <div id="device-panel">
+        <div class="device-panel-header">This device</div>
+        <div id="device-info">Registering…</div>
+        <div id="session-status" class="status-dot offline"></div>
+      </div>
+    </aside>
+
+    <!-- Right: chat area -->
+    <main id="chat-area">
+      <div id="no-chat-selected">
+        <p>Select a conversation or search for a user to start chatting.</p>
+        <p class="muted">Open a second tab and sign in as a different user to demo multi-device messaging.</p>
+      </div>
+
+      <div id="chat-view" class="hidden">
+        <div id="chat-header">
+          <span id="chat-title">—</span>
+          <span id="chat-id-label" class="muted"></span>
+        </div>
+
+        <div id="messages"></div>
+
+        <div id="composer">
+          <div id="offline-toggle-wrap">
+            <label class="toggle-label">
+              <input type="checkbox" id="offline-toggle" />
+              <span>Simulate offline</span>
+            </label>
+          </div>
+          <div id="input-row">
+            <textarea id="msg-input" placeholder="Type a message…" rows="1"></textarea>
+            <button id="send-btn">Send</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right panel: API log -->
+    <aside id="log-panel">
+      <div class="log-header">
+        API &amp; Event log
+        <button id="clear-log-btn">Clear</button>
+      </div>
+      <pre id="apilog"></pre>
+    </aside>
+  </div>
+
+  <!-- Group modal -->
+  <div id="group-modal" class="modal hidden">
+    <div class="modal-box">
+      <h3>Create group</h3>
+      <input id="group-name-input" type="text" placeholder="Group name" />
+      <input id="group-members-input" type="text" placeholder="Member user IDs (comma-separated)" />
+      <div class="modal-actions">
+        <button id="group-cancel-btn">Cancel</button>
+        <button id="group-create-btn">Create</button>
+      </div>
+      <p id="group-error" class="error hidden"></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

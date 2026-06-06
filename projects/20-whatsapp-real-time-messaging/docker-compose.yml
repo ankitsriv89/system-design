@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  whatsapp:
+    build: .
+    image: 20-whatsapp-real-time-messaging:latest
+    container_name: whatsapp
+    ports:
+      - "8101:8101"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-whatsapp}
+      POSTGRES_USER: ${POSTGRES_USER:-whatsapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-whatsapp}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      JWT_SECRET: ${JWT_SECRET:-whatsapp-dev-secret-at-least-32-bytes-long!!}
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8101/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  infra:
+    external: true
+    name: infra
