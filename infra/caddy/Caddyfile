@@ -118,6 +118,11 @@
         reverse_proxy localhost:8098
     }
 
+    # ── Project 18 — Instagram Photo/Video Sharing & Feed (:8099) ─────────────
+    handle_path /p18/* {
+        reverse_proxy localhost:8099
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {

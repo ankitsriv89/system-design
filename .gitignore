@@ -10,6 +10,14 @@
 # Go module download cache (not needed in repo)
 vendor/
 
+# Java / Gradle build outputs (projects 14+)
+**/build/
+**/.gradle/
+.gradle/
+
+# Scheduled-task lock (local runtime state)
+.claude/scheduled_tasks.lock
+
 # Environment files
 .env
 *.env.local

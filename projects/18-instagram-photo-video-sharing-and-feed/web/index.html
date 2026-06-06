@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instagram Photo/Video Sharing &amp; Feed — System Design #18</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <span class="badge">18</span>
+    <div>
+      <h1>Instagram Photo/Video Sharing &amp; Feed</h1>
+      <p class="subtitle">Media upload pipeline · async variants · fanout feed · CDN · Java / Spring Boot</p>
+    </div>
+  </div>
+</header>
+
+<main class="three-panel">
+
+  <!-- LEFT: Concept -->
+  <section class="panel concept-panel">
+    <h2>How It Works</h2>
+
+    <div class="concept-block">
+      <h3>Architecture</h3>
+      <pre class="arch-diagram">
+┌─────────────────────┐
+│      Demo UI        │
+│ upload · post · feed│
+└────────┬────────────┘
+         │ HTTP REST
+┌────────▼────────────┐
+│   Spring Boot API   │
+│ POST /v1/media/...  │
+│ POST /v1/posts      │
+│ GET  /v1/feed       │
+│ POST /likes         │
+└──┬─────┬──────┬─────┘
+   │     │      │
+┌──▼─┐ ┌─▼───┐ ┌▼──────┐
+│ PG │ │Redis│ │ MinIO │
+│meta│ │feed │ │origin │
+└────┘ └─────┘ └───┬───┘
+                   │ CDN
+              ┌────▼────┐
+              │Cloudflare│
+              └──────────┘
+   │
+┌──▼──────────────────┐
+│       Kafka         │
+│ media.uploaded      │
+│ media.processed     │
+│ post.created/liked  │
+└─────────────────────┘
+      </pre>
+    </div>
+
+    <div class="concept-block">
+      <h3>Media Pipeline</h3>
+      <p>Upload → store original in MinIO (PENDING) → emit <code>media.uploaded</code>
+      → worker generates thumbnail/small/medium variants → mark PROCESSED →
+      CDN serves variants by object key.</p>
+    </div>
+
+    <div class="concept-block">
+      <h3>Feed Fanout</h3>
+      <p>Hybrid model: push fanout into follower feeds (Redis ZSET) on
+      <code>post.created</code>; pull-on-read for celebrity accounts above the
+      follower threshold to avoid fanout storms.</p>
+    </div>
+  </section>
+
+  <!-- MIDDLE: Visualization -->
+  <section class="panel viz-panel">
+    <h2>Demo</h2>
+    <div id="viz-placeholder" class="viz-placeholder">
+      <p>Upload + feed demo wired in during build milestones.</p>
+    </div>
+  </section>
+
+  <!-- RIGHT: API log -->
+  <section class="panel log-panel">
+    <h2>API Log</h2>
+    <div id="apiLog" class="api-log"></div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -26,7 +26,7 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | 8096 | [15-group-chat-system](../projects/15-group-chat-system/) | `/p15/` | 🔧 in progress | WebSocket |
 | 8097 | [16-news-feed-system](../projects/16-news-feed-system/) | `/p16/` | ✅ built | hybrid fanout |
 | 8098 | [17-proximity-service](../projects/17-proximity-service/) | `/p17/` | ✅ built | Redis GEO + PostGIS |
-| 8099 | 18-instagram-photo-video-sharing-and-feed | `/p18/` | 🔲 planned | |
+| 8099 | [18-instagram-photo-video-sharing-and-feed](../projects/18-instagram-photo-video-sharing-and-feed/) | `/p18/` | 🔧 in progress | media: MinIO origin + Cloudflare CDN |
 | 8100 | 19-twitter-x-timeline-and-posts | `/p19/` | 🔲 planned | |
 | 8101 | 20-whatsapp-real-time-messaging | `/p20/` | 🔲 planned | WebSocket |
 | 8102 | 21-dropbox-file-storage-and-sync | `/p21/` | 🔲 planned | |

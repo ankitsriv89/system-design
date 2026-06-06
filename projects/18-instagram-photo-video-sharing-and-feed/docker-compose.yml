@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  instagram:
+    build: .
+    image: instagram:latest
+    container_name: instagram
+    ports:
+      - "8099:8099"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: instagram
+      POSTGRES_USER: instagram
+      POSTGRES_PASSWORD: instagram
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # MinIO is the S3-compatible media origin. In production, a Cloudflare CDN
+      # sits in front of the public base URL; locally the app serves objects
+      # directly so the demo is fully self-contained.
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: instagram
+      MINIO_SECRET_KEY: instagram123
+      MINIO_BUCKET: media
+      # Public base URL used to build media links. Swap to the CDN host in prod.
+      MEDIA_PUBLIC_BASE_URL: ${MEDIA_PUBLIC_BASE_URL:-/p18/media}
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8099/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Bundled per-project object store: media bytes are project-specific and we do
+  # not want them on the shared infra Postgres/Redis boxes. This is the origin
+  # behind the CDN.
+  minio:
+    image: minio/minio:latest
+    container_name: instagram-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: instagram
+      MINIO_ROOT_PASSWORD: instagram123
+    volumes:
+      - minio_data:/data
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  minio_data:
+
+networks:
+  infra:
+    external: true
