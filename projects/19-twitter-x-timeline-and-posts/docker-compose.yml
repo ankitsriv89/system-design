@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  twitter:
+    build: .
+    image: 19-twitter-x-timeline-and-posts:latest
+    container_name: twitter
+    ports:
+      - "8100:8100"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-twitter}
+      POSTGRES_USER: ${POSTGRES_USER:-twitter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-twitter}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+      OPENSEARCH_HOST: ${OPENSEARCH_HOST:-twitter-opensearch}
+      OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+      JWT_SECRET: ${JWT_SECRET:-twitter-dev-secret-at-least-32-bytes-long!!}
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8100/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Bundled per-project search/trends store. Tweet text is project-specific and
+  # we keep it off the shared infra boxes. Single-node, security disabled — this
+  # is the demo origin for full-text search and trend aggregation, not a prod cluster.
+  opensearch:
+    image: opensearchproject/opensearch:2.11.1
+    container_name: twitter-opensearch
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  opensearch_data:
+
+networks:
+  infra:
+    external: true
+    name: infra

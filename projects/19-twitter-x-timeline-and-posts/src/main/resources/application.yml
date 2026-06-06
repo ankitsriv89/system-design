@@ -1,0 +1,93 @@
+spring:
+  application:
+    name: twitter-timeline
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:twitter}
+    username: ${POSTGRES_USER:twitter}
+    password: ${POSTGRES_PASSWORD:twitter}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 10
+      idle-timeout: 600000
+
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: twitter
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.ankitsriv89.twitter.dto"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+  security:
+    user:
+      password: disabled
+
+server:
+  port: 8100
+
+twitter:
+  jwt:
+    secret: ${JWT_SECRET:twitter-dev-secret-at-least-32-bytes-long!!}
+    expiry-minutes: 1440
+  # Authors with more followers than this threshold are NOT fanned out on write.
+  # Their tweets are pulled at read time instead (fanout-on-read), avoiding the
+  # "celebrity fanout" write-amplification problem. See FanoutService.
+  fanout:
+    celebrity-threshold: 1000
+  timeline:
+    # How many materialized tweet IDs to keep per home timeline in Redis.
+    max-cached-items: 800
+    page-size: 20
+  ranking:
+    # Recency half-life in hours for the time-decay component of the timeline score.
+    half-life-hours: 12
+  search:
+    host: ${OPENSEARCH_HOST:localhost}
+    port: ${OPENSEARCH_PORT:9200}
+    index: tweets
+  trends:
+    # Sliding window (hours) over which hashtag counts are aggregated for trends.
+    window-hours: 24
+    top-n: 10
+  kafka:
+    topic:
+      tweets: twitter.tweets
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.ankitsriv89.twitter: INFO

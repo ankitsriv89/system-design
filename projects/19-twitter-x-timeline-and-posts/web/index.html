@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Twitter/X Timeline &amp; Posts — System Design #19</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <span class="badge">19</span>
+    <div>
+      <h1>Twitter/X Timeline &amp; Posts</h1>
+      <p class="subtitle">Hybrid fanout · celebrity read-path · OpenSearch search &amp; trends · Kafka · Java / Spring Boot</p>
+    </div>
+    <div class="session" id="session">
+      <span class="session-label">not signed in</span>
+    </div>
+  </div>
+</header>
+
+<main class="three-panel">
+
+  <!-- LEFT: Concept + controls -->
+  <section class="panel concept-panel">
+    <h2>How It Works</h2>
+
+    <div class="concept-block">
+      <h3>Architecture</h3>
+      <pre class="arch-diagram">
+   ┌──────────────┐
+   │   Demo UI     │
+   └──────┬───────┘
+          │ REST
+   ┌──────▼────────┐
+   │  Spring Boot   │
+   │ POST /v1/posts │
+   │ GET  /v1/home  │
+   │ GET  /v1/search│
+   │ GET  /v1/trends│
+   └─┬───┬────┬─────┘
+     │   │    │ tweet.created
+   ┌─▼┐ ┌▼──┐ │
+   │PG│ │Rds│ │  (Kafka)
+   │db│ │ZS │ │
+   └──┘ └───┘ │
+     ┌────────┴────────┐
+  ┌──▼───────┐  ┌───────▼────┐
+  │ fanout   │  │ search     │
+  │ worker   │  │ indexer    │
+  │ →Redis ZS│  │ →OpenSearch│
+  └──────────┘  └────────────┘</pre>
+    </div>
+
+    <div class="concept-block">
+      <h3>Hybrid Fanout</h3>
+      <p>On <code>tweet.created</code>, the fanout worker pushes the tweet ID into
+      each follower's Redis sorted-set timeline (push / fanout-on-write). Authors
+      above the <strong>celebrity threshold</strong> are skipped — their tweets are
+      pulled from Postgres at read time (pull / fanout-on-read), so a celebrity
+      tweet never triggers millions of writes.</p>
+    </div>
+
+    <div class="concept-block">
+      <h3>Search &amp; Trends</h3>
+      <p>A second consumer indexes every tweet into OpenSearch. <code>/v1/search</code>
+      is a full-text match; <code>/v1/trends</code> is a terms aggregation over
+      hashtags in a 24h window. Both are eventually consistent — independent of the
+      timeline path, so search lag never blocks the feed.</p>
+    </div>
+
+    <div class="concept-block">
+      <h3>Identity</h3>
+      <p>Pick any user id and mint a demo JWT. Switch users freely to build a follow
+      graph and watch fanout move tweets between timelines.</p>
+      <div class="control-row">
+        <input id="userId" placeholder="user id (e.g. alice)" autocomplete="off">
+        <button class="btn btn-primary" id="loginBtn">Sign in</button>
+      </div>
+      <div class="quick-users" id="quickUsers"></div>
+    </div>
+
+    <div class="concept-block">
+      <h3>Target SLOs (MVP)</h3>
+      <table class="slo-table">
+        <tr><th>Path</th><th>p95</th></tr>
+        <tr><td>POST /v1/posts</td><td>&lt; 50 ms</td></tr>
+        <tr><td>GET /v1/home</td><td>&lt; 30 ms</td></tr>
+        <tr><td>GET /v1/search</td><td>&lt; 80 ms</td></tr>
+        <tr><td>fanout lag</td><td>&lt; 2 s</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- MIDDLE: Live demo -->
+  <section class="panel viz-panel">
+    <h2>Live Demo</h2>
+
+    <div class="card">
+      <h3>Compose</h3>
+      <textarea id="tweetText" maxlength="280" rows="3"
+        placeholder="What's happening? Use #hashtags to feed the trends panel…"></textarea>
+      <div class="compose-row">
+        <span class="charcount" id="charCount">0 / 280</span>
+        <button class="btn btn-primary" id="tweetBtn" disabled>Tweet</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Follow graph</h3>
+      <div class="control-row">
+        <input id="followId" placeholder="follow user id" autocomplete="off">
+        <button class="btn btn-secondary" id="followBtn" disabled>Follow</button>
+      </div>
+      <div class="graph-row" id="graphRow">
+        <span class="muted">Sign in to build a follow graph.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Home timeline</h3>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="refreshHomeBtn" disabled>Refresh</button>
+          <button class="btn btn-ghost" id="backfillBtn" disabled>Backfill</button>
+        </div>
+      </div>
+      <div class="timeline" id="timeline">
+        <span class="muted">Your hybrid-fanout home timeline appears here.</span>
+      </div>
+    </div>
+
+    <div class="card discovery">
+      <div class="discovery-col">
+        <h3>Search</h3>
+        <div class="control-row">
+          <input id="searchQ" placeholder="search tweets…" autocomplete="off">
+          <button class="btn btn-secondary" id="searchBtn">Go</button>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+      <div class="discovery-col">
+        <div class="card-head">
+          <h3>Trends (24h)</h3>
+          <button class="btn btn-ghost" id="trendsBtn">↻</button>
+        </div>
+        <ul class="trends" id="trends"><li class="muted">No trends yet.</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: API log -->
+  <section class="panel log-panel">
+    <div class="log-header">
+      <h2>API Log</h2>
+      <button class="btn btn-ghost" id="clearLogBtn">clear</button>
+    </div>
+    <div id="apiLog" class="api-log"></div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
