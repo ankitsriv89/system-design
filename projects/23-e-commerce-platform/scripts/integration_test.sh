@@ -39,6 +39,7 @@ echo ""
 echo "==> Test: add to cart"
 CART=$(curl -sf -X POST "$BASE/v1/cart/it-user/items" \
   -H "Content-Type: application/json" \
+  -H "X-User-Id: it-user" \
   -d "{\"productId\":\"$PROD_ID\",\"quantity\":2}")
 COUNT=$(echo "$CART" | python3 -c "import json,sys; print(len(json.load(sys.stdin)['items']))")
 assert_eq "cart has 1 item" "1" "$COUNT"
@@ -78,10 +79,17 @@ done
 assert_eq "order confirmed via saga" "CONFIRMED" "$STATUS"
 
 echo ""
+echo "==> Test: cart IDOR guard (wrong X-User-Id returns 403)"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE/v1/cart/it-user" \
+  -H "X-User-Id: attacker")
+assert_eq "IDOR guard returns 403" "403" "$STATUS"
+
+echo ""
 echo "==> Test: oversell prevention"
 # Add more than available stock (stock=10, already used 2)
 curl -sf -X POST "$BASE/v1/cart/it-user2/items" \
   -H "Content-Type: application/json" \
+  -H "X-User-Id: it-user2" \
   -d "{\"productId\":\"$PROD_ID\",\"quantity\":100}" > /dev/null
 OVER_RESP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$BASE/v1/orders" \
   -H "Content-Type: application/json" \

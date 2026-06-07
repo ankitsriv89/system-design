@@ -13,8 +13,8 @@ function log(msg, type = '') {
   while (box.children.length > 80) box.lastChild.remove();
 }
 
-async function api(method, path, body) {
-  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+async function api(method, path, body, extraHeaders = {}) {
+  const opts = { method, headers: { 'Content-Type': 'application/json', ...extraHeaders } };
   if (body !== undefined) opts.body = JSON.stringify(body);
   try {
     const res = await fetch(BASE + path, opts);
@@ -120,7 +120,7 @@ async function createProduct() {
 
 async function viewCart() {
   const userId = document.getElementById('cartUserId').value.trim();
-  const cart = await api('GET', '/v1/cart/' + userId);
+  const cart = await api('GET', '/v1/cart/' + userId, undefined, { 'X-User-Id': userId });
   renderCart(cart);
   log('Cart for ' + userId + ': ' + cart.items.length + ' items  total=$' + Number(cart.total || 0).toFixed(2));
 }
@@ -132,7 +132,8 @@ async function addToCart() {
 
   if (!productId) { log('Enter a product ID', 'err'); return; }
 
-  const cart = await api('POST', '/v1/cart/' + userId + '/items', { productId, quantity: qty });
+  const cart = await api('POST', '/v1/cart/' + userId + '/items',
+    { productId, quantity: qty }, { 'X-User-Id': userId });
   renderCart(cart);
   log('Added ' + qty + '× ' + productId + ' to cart', 'ok');
 }

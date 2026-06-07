@@ -41,8 +41,24 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public Product update(@PathVariable String id, @Valid @RequestBody Product product) {
-        product.setId(id);
-        return catalogService.updateProduct(product);
+    public ResponseEntity<Product> update(@PathVariable String id,
+                                          @Valid @RequestBody ProductUpdateRequest req) {
+        return catalogService.getProduct(id).map(existing -> {
+            // Patch only mutable fields — never accept id/createdAt from request body.
+            if (req.name() != null)        existing.setName(req.name());
+            if (req.description() != null) existing.setDescription(req.description());
+            if (req.price() != null)       existing.setPrice(req.price());
+            if (req.category() != null)    existing.setCategory(req.category());
+            if (req.imageUrl() != null)    existing.setImageUrl(req.imageUrl());
+            return ResponseEntity.ok(catalogService.updateProduct(existing));
+        }).orElse(ResponseEntity.notFound().build());
     }
+
+    record ProductUpdateRequest(
+        String name,
+        String description,
+        java.math.BigDecimal price,
+        String category,
+        String imageUrl
+    ) {}
 }
