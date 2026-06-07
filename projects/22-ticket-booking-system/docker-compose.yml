@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  ticket-booking:
+    build: .
+    image: 22-ticket-booking-system:latest
+    container_name: ticket-booking
+    ports:
+      - "8103:8103"
+    environment:
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-ticketbooking}
+      POSTGRES_USER: ${POSTGRES_USER:-ticketbooking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ticketbooking}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP:-kafka:9092}
+    networks:
+      - infra
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8103/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  infra:
+    external: true
+    name: infra

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>22 — Ticket Booking System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <span class="project-badge">P22</span>
+      <h1>Ticket Booking System</h1>
+      <p class="subtitle">Inventory locking · Hold TTL · Payment saga · Oversell prevention</p>
+    </div>
+  </header>
+
+  <main class="panels">
+
+    <!-- Panel 1: Concept -->
+    <section class="panel concept-panel">
+      <h2>How It Works</h2>
+
+      <div class="concept-block">
+        <h3>Three-Phase Booking</h3>
+        <div class="flow-steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <div>
+              <strong>Browse Seat Map</strong>
+              <p>Cached in Redis (30s TTL). Stale on any seat state change.</p>
+            </div>
+          </div>
+          <div class="step-arrow">↓</div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <div>
+              <strong>Place Hold</strong>
+              <p>Optimistic lock on seat row (<code>@Version</code>). Hold written to PG + Redis. TTL: 5 min.</p>
+            </div>
+          </div>
+          <div class="step-arrow">↓</div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <div>
+              <strong>Checkout</strong>
+              <p>Idempotency key prevents double-charge. Payment mock: amount &gt; 0 succeeds. Seat → BOOKED.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="concept-block">
+        <h3>Oversell Prevention</h3>
+        <p>
+          Two guards in series:
+          <em>(a)</em> Redis key <code>seat_hold:&lt;id&gt;</code> is checked first — fast rejection.
+          <em>(b)</em> PostgreSQL optimistic locking (<code>@Version</code>) catches any remaining race.
+          Only one transaction can flip <code>AVAILABLE → HELD</code>.
+        </p>
+      </div>
+
+      <div class="concept-block">
+        <h3>Hold Expiry</h3>
+        <p>
+          A Spring <code>@Scheduled</code> worker sweeps expired holds every 10 s.
+          It sets <code>hold.status = EXPIRED</code>, returns the seat to <code>AVAILABLE</code>,
+          evicts the seat-map cache, and publishes <code>hold.expired</code> to Kafka.
+        </p>
+      </div>
+
+      <div class="concept-block">
+        <h3>Key Design Decisions</h3>
+        <ul class="decision-list">
+          <li><span class="badge green">Strong</span> Seat state is always consistent — PG is source of truth</li>
+          <li><span class="badge yellow">Eventual</span> Seat map cache — 30 s max stale window</li>
+          <li><span class="badge blue">Idempotent</span> Checkout accepts <code>idempotencyKey</code> — safe to retry</li>
+          <li><span class="badge red">Scale</span> Flash-sale: partition by event_id; Redis atomic SET NX before DB</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Panel 2: Live Demo -->
+    <section class="panel demo-panel">
+      <h2>Live Demo</h2>
+
+      <div class="demo-section">
+        <h3>Events</h3>
+        <div class="input-row">
+          <input id="event-name" type="text" placeholder="Event name" value="Rock Concert">
+          <input id="event-venue" type="text" placeholder="Venue" value="Madison Square Garden">
+          <input id="event-seats" type="number" placeholder="Seats" value="30" min="3">
+          <button id="btn-create-event">Create Event</button>
+        </div>
+        <div id="events-list" class="entity-list"></div>
+      </div>
+
+      <div class="demo-section">
+        <h3>Seat Map</h3>
+        <div class="input-row">
+          <button id="btn-refresh-seats">Refresh Seats</button>
+          <span class="hint">Select an event above, then refresh.</span>
+        </div>
+        <div id="seat-map" class="seat-grid"></div>
+        <div id="seat-stats" class="seat-stats"></div>
+      </div>
+
+      <div class="demo-section">
+        <h3>Hold a Seat</h3>
+        <div class="input-row">
+          <input id="hold-seat-id" type="text" placeholder="Seat ID (click seat above)">
+          <input id="hold-user-id" type="text" placeholder="User ID" value="user-001">
+          <button id="btn-create-hold">Place Hold (5 min TTL)</button>
+        </div>
+        <div id="hold-result" class="result-box"></div>
+      </div>
+
+      <div class="demo-section">
+        <h3>Checkout</h3>
+        <div class="input-row">
+          <input id="checkout-hold-id" type="text" placeholder="Hold ID">
+          <input id="checkout-user-id" type="text" placeholder="User ID" value="user-001">
+          <input id="checkout-amount" type="number" placeholder="Amount" value="99.99" step="0.01">
+          <input id="checkout-idem-key" type="text" placeholder="Idempotency key (optional)">
+          <button id="btn-checkout">Checkout</button>
+        </div>
+        <div id="checkout-result" class="result-box"></div>
+      </div>
+    </section>
+
+    <!-- Panel 3: API Log -->
+    <section class="panel log-panel">
+      <h2>API Log <button id="btn-clear-log" class="clear-btn">Clear</button></h2>
+      <div id="api-log" class="log-container"></div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

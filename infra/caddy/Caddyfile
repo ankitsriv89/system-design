@@ -160,6 +160,15 @@
         reverse_proxy localhost:8102
     }
 
+    # ── Project 22 — Ticket Booking System (:8103) ────────────────────────────
+    @p22_actuator path /p22/actuator/*
+    handle @p22_actuator {
+        respond "Not Found" 404
+    }
+    handle_path /p22/* {
+        reverse_proxy localhost:8103
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
