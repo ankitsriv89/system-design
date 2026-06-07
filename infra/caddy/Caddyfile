@@ -169,6 +169,15 @@
         reverse_proxy localhost:8103
     }
 
+    # ── Project 23 — E-Commerce Platform (:8104) ────────────────────────────
+    @p23_actuator path /p23/actuator/*
+    handle @p23_actuator {
+        respond "Not Found" 404
+    }
+    handle_path /p23/* {
+        reverse_proxy localhost:8104
+    }
+
     # Add further projects here as they are built.
     # Template:
     #   handle_path /pNN/* {
@@ -221,6 +230,7 @@
   <a href="/p18/"><div class="num">18</div><div class="name">Instagram Photo/Video &amp; Feed</div><div class="tag">Media pipeline · MinIO + CDN · Hybrid fanout · Kafka · Java</div></a>
   <a href="/p19/"><div class="num">19</div><div class="name">Twitter/X Timeline &amp; Posts</div><div class="tag">Hybrid fanout · Celebrity read-path · OpenSearch search/trends · Kafka · Java</div></a>
   <a href="/p20/"><div class="num">20</div><div class="name">WhatsApp Real-Time Messaging</div><div class="tag">WebSocket · E2EE (WebCrypto ECDH) · Kafka fan-out · Receipts · Offline sync · Java</div></a>
+  <a href="/p23/"><div class="num">23</div><div class="name">E-Commerce Platform</div><div class="tag">Catalog · Cart (Redis) · Inventory reservation · Order saga · Kafka · Java</div></a>
 </div>
 <footer>More projects deploy as they are built — <a href="https://github.com/ankitsriv89/system-design" style="color:#4f9cf9">github.com/ankitsriv89/system-design</a></footer>
 </body>

@@ -31,7 +31,7 @@ Each project gets a fixed host port. This registry prevents conflicts across all
 | 8101 | [20-whatsapp-real-time-messaging](../projects/20-whatsapp-real-time-messaging/) | `/p20/` | ✅ built | WebSocket · E2EE · Kafka fan-out |
 | 8102 | 21-dropbox-file-storage-and-sync | `/p21/` | 🔧 in progress | |
 | 8103 | [22-ticket-booking-system](../projects/22-ticket-booking-system/) | `/p22/` | 🔧 in progress | inventory lock · hold TTL · payment saga |
-| 8104 | 23-e-commerce-platform | `/p23/` | 🔲 planned | |
+| 8104 | [23-e-commerce-platform](../projects/23-e-commerce-platform/) | `/p23/` | ✅ built | Kafka saga · inventory reservation · cart |
 | 8105 | 24-recommendation-system | `/p24/` | 🔲 planned | |
 | 8106 | 25-distributed-cache | `/p25/` | 🔲 planned | |
 | 8107 | 26-uber-ride-sharing-and-matching | `/p26/` | 🔲 planned | WebSocket |

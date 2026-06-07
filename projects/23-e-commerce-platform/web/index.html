@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Commerce Platform — System Design #23</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header>
+  <div class="status-dot" id="statusDot"></div>
+  <h1>E-Commerce Platform</h1>
+  <span class="badge">Project #23</span>
+  <span class="header-sub">Catalog · Cart · Checkout · Inventory Reservation · Order Saga</span>
+</header>
+
+<div class="layout">
+
+  <!-- ====== LEFT PANEL ====== -->
+  <div class="left-panel">
+
+    <div class="section">
+      <div class="section-title">How It Works</div>
+      <div class="concept-box">
+        <h3>Order Saga</h3>
+        A buyer adds products to a <strong>cart</strong> (stored in Redis), then checks out. Checkout atomically <strong>reserves inventory</strong> (PostgreSQL UPDATE with stock ≥ qty guard), creates an order in <strong>PENDING</strong> state, and publishes an <code>order.created</code> event to Kafka. The <strong>PaymentSagaConsumer</strong> picks it up and auto-approves payment (mock), transitioning the order to <strong>CONFIRMED</strong>. If inventory fails, the transaction rolls back with no partial state.
+        <div class="kv"><span>Cart store</span><span>Redis (JSON, 7-day TTL)</span></div>
+        <div class="kv"><span>Inventory safety</span><span>Atomic UPDATE stock ≥ qty</span></div>
+        <div class="kv"><span>Idempotency</span><span>Unique idempotency_key on orders</span></div>
+        <div class="kv"><span>Delivery</span><span>At-least-once via Kafka</span></div>
+      </div>
+    </div>
+
+    <!-- Products -->
+    <div class="section">
+      <div class="section-title">Catalog</div>
+      <div class="row-inputs">
+        <input type="text" id="searchQuery" placeholder="Search products…">
+        <button class="btn btn-secondary" onclick="searchProducts()">Search</button>
+        <button class="btn btn-secondary" onclick="loadProducts()">All</button>
+      </div>
+      <div id="productList" class="scroll-list"></div>
+    </div>
+
+    <!-- Create product (admin) -->
+    <div class="section">
+      <div class="section-title">Add Product (Admin)</div>
+      <label>SKU</label>
+      <input type="text" id="newSku" placeholder="BOOK-001">
+      <label>Name</label>
+      <input type="text" id="newName" placeholder="The Pragmatic Programmer">
+      <label>Price</label>
+      <input type="number" id="newPrice" value="29.99" step="0.01">
+      <label>Stock</label>
+      <input type="number" id="newStock" value="50">
+      <label>Category</label>
+      <input type="text" id="newCategory" placeholder="books">
+      <button class="btn btn-primary" onclick="createProduct()">Create Product</button>
+    </div>
+
+  </div>
+
+  <!-- ====== MIDDLE PANEL ====== -->
+  <div class="middle-panel">
+
+    <!-- Cart -->
+    <div class="section">
+      <div class="section-title">Cart</div>
+      <label>User ID</label>
+      <input type="text" id="cartUserId" value="user-demo">
+      <div class="row-inputs" style="margin-top:6px">
+        <input type="text" id="addProductId" placeholder="Product ID">
+        <input type="number" id="addQty" value="1" min="1" style="width:60px">
+        <button class="btn btn-primary" onclick="addToCart()">Add</button>
+        <button class="btn btn-secondary" onclick="viewCart()">View</button>
+      </div>
+      <div id="cartDisplay" class="scroll-list" style="margin-top:8px"></div>
+    </div>
+
+    <!-- Checkout -->
+    <div class="section">
+      <div class="section-title">Checkout</div>
+      <label>User ID</label>
+      <input type="text" id="checkoutUserId" value="user-demo">
+      <div class="row-inputs" style="margin-top:6px">
+        <button class="btn btn-success" onclick="checkout()">Place Order</button>
+      </div>
+      <div id="checkoutResult" style="margin-top:8px;font-size:12px"></div>
+    </div>
+
+    <!-- Orders -->
+    <div class="section">
+      <div class="section-title">My Orders</div>
+      <div class="row-inputs">
+        <input type="text" id="ordersUserId" value="user-demo">
+        <button class="btn btn-secondary" onclick="loadOrders()">Load</button>
+      </div>
+      <div id="orderList" class="scroll-list" style="margin-top:8px"></div>
+    </div>
+
+  </div>
+
+  <!-- ====== RIGHT PANEL ====== -->
+  <div class="right-panel">
+
+    <!-- Saga visualiser -->
+    <div class="section">
+      <div class="section-title">Order Saga Flow</div>
+      <div class="saga-flow" id="sagaFlow">
+        <div class="saga-step" id="step-PENDING">PENDING</div>
+        <div class="saga-arrow">↓ reserve inventory</div>
+        <div class="saga-step" id="step-INVENTORY_RESERVED">INVENTORY_RESERVED</div>
+        <div class="saga-arrow">↓ Kafka → payment mock</div>
+        <div class="saga-step" id="step-PAYMENT_AUTHORIZED">PAYMENT_AUTHORIZED</div>
+        <div class="saga-arrow">↓ confirm</div>
+        <div class="saga-step" id="step-CONFIRMED">CONFIRMED</div>
+        <div class="saga-arrow saga-comp">✕ failure → release stock</div>
+        <div class="saga-step saga-err" id="step-INVENTORY_FAILED">INVENTORY_FAILED</div>
+        <div class="saga-step saga-err" id="step-PAYMENT_FAILED">PAYMENT_FAILED</div>
+      </div>
+    </div>
+
+    <!-- Admin order management -->
+    <div class="section">
+      <div class="section-title">Admin — Orders</div>
+      <button class="btn btn-secondary" style="width:100%;margin-bottom:6px" onclick="loadAllOrders()">Refresh All Orders</button>
+      <div id="adminOrderList" class="scroll-list"></div>
+    </div>
+
+    <!-- Log -->
+    <div class="section" style="flex:1">
+      <div class="section-title">Activity Log</div>
+      <div id="log" class="log-box"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
