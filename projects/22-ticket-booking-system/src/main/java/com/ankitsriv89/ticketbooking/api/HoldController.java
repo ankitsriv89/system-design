@@ -18,17 +18,24 @@ public class HoldController {
     }
 
     @PostMapping
-    public ResponseEntity<Hold> createHold(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Hold> createHold(
+            @RequestHeader("X-User-Id") String callerId,
+            @RequestBody Map<String, String> body) {
         String seatId = body.get("seatId");
-        String userId = body.get("userId");
-        if (seatId == null || userId == null) {
+        if (seatId == null) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.status(201).body(holdService.createHold(seatId, userId));
+        return ResponseEntity.status(201).body(holdService.createHold(seatId, callerId));
     }
 
     @GetMapping("/{id}")
-    public Hold getHold(@PathVariable String id) {
-        return holdService.getHold(id);
+    public ResponseEntity<Hold> getHold(
+            @RequestHeader("X-User-Id") String callerId,
+            @PathVariable String id) {
+        Hold hold = holdService.getHold(id);
+        if (!hold.getUserId().equals(callerId)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(hold);
     }
 }

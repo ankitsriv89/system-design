@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/v1/bookings")
@@ -19,26 +20,36 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
+    // userId is injected by the upstream auth gateway via X-User-Id header,
+    // never trusted from the request body.
     @PostMapping
-    public ResponseEntity<Booking> checkout(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Booking> checkout(
+            @RequestHeader("X-User-Id") String callerId,
+            @RequestBody Map<String, String> body) {
         String holdId = body.get("holdId");
-        String userId = body.get("userId");
         String amountStr = body.get("amount");
         String idempotencyKey = body.get("idempotencyKey");
-        if (holdId == null || userId == null || amountStr == null) {
+        if (holdId == null || amountStr == null) {
             return ResponseEntity.badRequest().build();
         }
-        Booking booking = bookingService.checkout(holdId, userId, new BigDecimal(amountStr), idempotencyKey);
+        Booking booking = bookingService.checkout(holdId, callerId, new BigDecimal(amountStr), idempotencyKey);
         return ResponseEntity.status(201).body(booking);
     }
 
     @GetMapping("/{id}")
-    public Booking getBooking(@PathVariable String id) {
-        return bookingService.getBooking(id);
+    public ResponseEntity<Booking> getBooking(
+            @RequestHeader("X-User-Id") String callerId,
+            @PathVariable String id) {
+        Booking booking = bookingService.getBooking(id);
+        if (!booking.getUserId().equals(callerId)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(booking);
     }
 
+    // Returns only the caller's own bookings — userId param is ignored.
     @GetMapping
-    public List<Booking> listByUser(@RequestParam String userId) {
-        return bookingService.listByUser(userId);
+    public List<Booking> listMyBookings(@RequestHeader("X-User-Id") String callerId) {
+        return bookingService.listByUser(callerId);
     }
 }

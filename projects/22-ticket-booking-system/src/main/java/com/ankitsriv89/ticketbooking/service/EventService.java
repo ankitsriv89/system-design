@@ -33,6 +33,10 @@ public class EventService {
 
     @Transactional
     public Event createEvent(Event event) {
+        int total = event.getTotalSeats();
+        if (total < 3 || total > 10_000) {
+            throw new IllegalArgumentException("totalSeats must be between 3 and 10000");
+        }
         Event saved = eventRepo.save(event);
         List<Seat> seats = new ArrayList<>();
         String[] sections = {"A", "B", "C"};

@@ -29,8 +29,16 @@
     log.prepend(el);
   }
 
+  // userId is sent as X-User-Id header (simulating upstream auth gateway injection).
+  function getUserId() {
+    return document.getElementById('hold-user-id')?.value.trim() || 'user-001';
+  }
+
   async function apiFetch(method, path, body) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-User-Id': getUserId() }
+    };
     if (body) opts.body = JSON.stringify(body);
     const res = await fetch(BASE + path, opts);
     let data;
@@ -127,17 +135,15 @@
   // ── Hold ─────────────────────────────────────────────────────────────────────
   document.getElementById('btn-create-hold').addEventListener('click', async () => {
     const seatId = document.getElementById('hold-seat-id').value.trim();
-    const userId = document.getElementById('hold-user-id').value.trim();
     const resultEl = document.getElementById('hold-result');
-    if (!seatId || !userId) return;
+    if (!seatId) return;
 
-    const { ok, data } = await apiFetch('POST', '/v1/holds', { seatId, userId });
+    // userId flows via X-User-Id header (set by getUserId()), not the body.
+    const { ok, data } = await apiFetch('POST', '/v1/holds', { seatId });
     resultEl.className = 'result-box' + (ok ? '' : ' error');
     resultEl.textContent = JSON.stringify(data, null, 2);
     if (ok && data.id) {
       document.getElementById('checkout-hold-id').value = data.id;
-      document.getElementById('checkout-user-id').value = userId;
-      // Suggest idempotency key
       document.getElementById('checkout-idem-key').value = 'idem-' + data.id.slice(0, 8);
     }
     loadSeats();
@@ -146,13 +152,13 @@
   // ── Checkout ─────────────────────────────────────────────────────────────────
   document.getElementById('btn-checkout').addEventListener('click', async () => {
     const holdId = document.getElementById('checkout-hold-id').value.trim();
-    const userId = document.getElementById('checkout-user-id').value.trim();
     const amount = document.getElementById('checkout-amount').value.trim();
     const idempotencyKey = document.getElementById('checkout-idem-key').value.trim() || undefined;
     const resultEl = document.getElementById('checkout-result');
-    if (!holdId || !userId || !amount) return;
+    if (!holdId || !amount) return;
 
-    const { ok, data } = await apiFetch('POST', '/v1/bookings', { holdId, userId, amount, idempotencyKey });
+    // userId flows via X-User-Id header, not the body.
+    const { ok, data } = await apiFetch('POST', '/v1/bookings', { holdId, amount, idempotencyKey });
     resultEl.className = 'result-box' + (ok ? '' : ' error');
     resultEl.textContent = JSON.stringify(data, null, 2);
     if (ok) loadSeats();
