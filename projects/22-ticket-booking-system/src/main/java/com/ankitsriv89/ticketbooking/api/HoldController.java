@@ -28,14 +28,11 @@ public class HoldController {
         return ResponseEntity.status(201).body(holdService.createHold(seatId, callerId));
     }
 
+    // Ownership-scoped: returns 404 for both missing and unauthorised ids — no existence oracle.
     @GetMapping("/{id}")
-    public ResponseEntity<Hold> getHold(
+    public Hold getHold(
             @RequestHeader("X-User-Id") String callerId,
             @PathVariable String id) {
-        Hold hold = holdService.getHold(id);
-        if (!hold.getUserId().equals(callerId)) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(hold);
+        return holdService.getHoldForCaller(id, callerId);
     }
 }

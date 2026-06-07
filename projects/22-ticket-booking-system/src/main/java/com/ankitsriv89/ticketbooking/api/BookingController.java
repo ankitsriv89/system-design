@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/v1/bookings")
@@ -36,15 +35,12 @@ public class BookingController {
         return ResponseEntity.status(201).body(booking);
     }
 
+    // Ownership-scoped: returns 404 for both missing and unauthorised ids — no existence oracle.
     @GetMapping("/{id}")
-    public ResponseEntity<Booking> getBooking(
+    public Booking getBooking(
             @RequestHeader("X-User-Id") String callerId,
             @PathVariable String id) {
-        Booking booking = bookingService.getBooking(id);
-        if (!booking.getUserId().equals(callerId)) {
-            return ResponseEntity.status(403).build();
-        }
-        return ResponseEntity.ok(booking);
+        return bookingService.getBookingForCaller(id, callerId);
     }
 
     // Returns only the caller's own bookings — userId param is ignored.

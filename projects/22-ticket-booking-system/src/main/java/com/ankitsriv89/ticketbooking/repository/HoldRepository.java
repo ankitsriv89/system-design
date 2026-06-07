@@ -17,4 +17,7 @@ public interface HoldRepository extends JpaRepository<Hold, String> {
     List<Hold> findExpiredHolds(@Param("now") Instant now);
 
     List<Hold> findByUserIdAndEventIdAndStatus(String userId, String eventId, Hold.Status status);
+
+    // Ownership-scoped lookup — collapses 404 vs 403 into a single response.
+    Optional<Hold> findByIdAndUserId(String id, String userId);
 }

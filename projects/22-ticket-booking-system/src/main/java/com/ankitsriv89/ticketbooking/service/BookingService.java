@@ -135,5 +135,12 @@ public class BookingService {
             .orElseThrow(() -> new NoSuchElementException("Booking not found: " + id));
     }
 
+    // Ownership-scoped: always returns 404 whether the id doesn't exist or belongs
+    // to a different user — avoids leaking resource existence to unauthorised callers.
+    public Booking getBookingForCaller(String id, String callerId) {
+        return bookingRepo.findByIdAndUserId(id, callerId)
+            .orElseThrow(() -> new NoSuchElementException("Booking not found: " + id));
+    }
+
     public record BookingEvent(String type, String bookingId, String seatId, String userId) {}
 }

@@ -106,5 +106,11 @@ public class HoldService {
             .orElseThrow(() -> new NoSuchElementException("Hold not found: " + holdId));
     }
 
+    // Ownership-scoped: collapses 404 vs 403 so callers can't probe for other users' holds.
+    public Hold getHoldForCaller(String holdId, String callerId) {
+        return holdRepo.findByIdAndUserId(holdId, callerId)
+            .orElseThrow(() -> new NoSuchElementException("Hold not found: " + holdId));
+    }
+
     public record HoldEvent(String type, String holdId, String seatId, String userId) {}
 }
